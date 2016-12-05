@@ -1,0 +1,6 @@
+[submodule "MeshLib"]
+	path = MeshLib
+	url = https://github.com/cfwen/MeshLib.git
+[submodule "lemon"]
+	path = lemon
+	url = https://github.com/cfwen/lemon.git
