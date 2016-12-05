@@ -14,7 +14,7 @@ using namespace MeshLib;
 class CTarget
 {
 public:
-    SmartGraph::Edge* edge;
+    SmartGraph::Edge edge;
     int direction;
     double length;
 };
@@ -31,6 +31,7 @@ public:
     int calculateEdgeLength();
     int calculateEdgeWeight();
 
+    int _calculateBarycenter(CVertex* v);
     int harmonicMap();
 
     int writeMap(string filename);

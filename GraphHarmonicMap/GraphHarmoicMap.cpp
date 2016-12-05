@@ -44,9 +44,9 @@ int CGraphHarmoicMap::setGraph(string filename)
         CVertex * v = *vit;
         CTarget * t = new CTarget();
         int i = rand() % ne;
-        t->edge = &edges[i];
+        t->edge = edges[i];
         t->direction = rand() % 2;
-        t->length = graph->edgeLength[edges[i]] / 3.0;
+        t->length = graph->edgeLength[t->edge] / 3.0;
         v->prop("target") = t;
     }
     return 0;
@@ -67,6 +67,13 @@ int CGraphHarmoicMap::calculateEdgeLength()
 int CGraphHarmoicMap::calculateEdgeWeight()
 {
     auto cosine_law = [](double li, double lj, double lk) { return acos((lj * lj + lk * lk - li * li) / (2 * lj * lk)); };
+    for (MeshEdgeIterator eit(mesh); !eit.end(); ++eit)
+    {
+        CEdge * e = *eit;
+        e->prop("weight") = double(0.0);
+        e->halfedge(0)->touched() = false;
+        e->halfedge(1)->touched() = false;
+    }
     for (MeshHalfEdgeIterator heit(mesh); !heit.end(); ++heit)
     {
         CHalfEdge * he = *heit;
@@ -88,17 +95,41 @@ int CGraphHarmoicMap::calculateEdgeWeight()
     return 0;
 }
 
+int CGraphHarmoicMap::_calculateBarycenter(CVertex* v)
+{
+    vector<CVertex*> nei;
+    vector<double> ew;
+    for (VertexOutHalfedgeIterator heit(mesh, v); !heit.end(); ++heit)
+    {
+        CHalfEdge * he = *heit;
+        nei.push_back(he->target());
+        ew.push_back(he->edge()->prop("weight"));
+    }
+    double a = 0.0;
+    for (double w : ew) a += w;
+    
+    for (auto vj : nei)
+    {
+        void * tj = vj->prop("target");
+        auto ej = ((CTarget*)tj)->edge;
+    }
+
+    return 0;
+}
+
 /*
  * for every vertex, move it to its neighbors' weighted center
 */
 int CGraphHarmoicMap::harmonicMap()
 {
-    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+    calculateEdgeLength();
+    calculateEdgeWeight();
+    int k = 0;
+    while (k < 100)
     {
-        CVertex * v = *vit;
-        for (VertexOutHalfedgeIterator heit(mesh, v); !heit.end(); ++heit)
+        for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
         {
-            CHalfEdge * he = *heit;
+            _calculateBarycenter(*vit);
         }
     }
 
