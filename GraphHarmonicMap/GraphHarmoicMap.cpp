@@ -95,7 +95,48 @@ int CGraphHarmoicMap::calculateEdgeWeight()
     return 0;
 }
 
-int CGraphHarmoicMap::_calculateBarycenter(CVertex* v)
+/*
+ * find the minimum point of a quadratic function in interval [x0, x1]
+ */
+inline double quadraticMininum(double a, double b, double c, double x0, double x1, double &x)
+{
+    auto fun = [=](double x) { return a * x * x + b * x + c; };
+    double f0 = fun(x0);
+    double f1 = fun(x1);
+    x = x0;
+    double fm = f0;
+    if(f1 < f0)
+    {
+        x = x1;
+        fm = f1;
+    }
+    double x2 = -b/a/2.0;
+    double f2 = fun(x2);
+    if(x0 < x2 && x2 < x1)
+    {
+        if(f2 < fm)
+        {
+            x = x2;
+            fm = f2;
+        }
+    }
+    return fm;
+}
+
+/*
+ * distance between two points x and y on the graph 
+ */
+double CGraphHarmoicMap::distance(CTarget * x, CTarget * y)
+{
+    // first compute the shorest distance between the node of two edges
+    auto e1 = x->edge;
+    auto e2 = y->edge;
+    double de = graph->distance(e1, e2, n1, n2);
+    return x->length + de + y->length;
+}
+
+
+int CGraphHarmoicMap::calculateBarycenter(CVertex * v)
 {
     vector<CVertex*> nei;
     vector<double> ew;
@@ -108,10 +149,27 @@ int CGraphHarmoicMap::_calculateBarycenter(CVertex* v)
     double a = 0.0;
     for (double w : ew) a += w;
     
-    for (auto vj : nei)
+    vector<double> fm;
+    vector<CTarget*> vx;
+    for (SmartGraph::EdgeIt e(*graph); e != INVALID; ++e)
     {
-        void * tj = vj->prop("target");
-        auto ej = ((CTarget*)tj)->edge;
+        if (e->source == e->target) // if e is a loop
+        {
+            // find those nei on this loop
+
+            // find minimum point in this loop
+        }
+        
+
+        else // if e is not loop
+        {
+
+            // find those nei on this edge
+
+            // find minimum point on this edge
+
+        }
+        
     }
 
     return 0;
@@ -129,7 +187,7 @@ int CGraphHarmoicMap::harmonicMap()
     {
         for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
         {
-            _calculateBarycenter(*vit);
+            calculateBarycenter(*vit);
         }
     }
 

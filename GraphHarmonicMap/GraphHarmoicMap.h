@@ -31,7 +31,7 @@ public:
     int calculateEdgeLength();
     int calculateEdgeWeight();
 
-    int _calculateBarycenter(CVertex* v);
+    int calculateBarycenter(CVertex* v);
     int harmonicMap();
 
     int writeMap(string filename);

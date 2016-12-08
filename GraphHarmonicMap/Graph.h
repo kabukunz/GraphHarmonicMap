@@ -22,6 +22,7 @@ public:
     void read(string filename);
     void write(string filename);
 
+    double distance(const SmartGraph::Node & n1, const SmartGraph::Node & n2);
 
     SmartGraph g;
     SmartGraph::NodeMap<CPoint2> nodePosition;
@@ -29,4 +30,5 @@ public:
 
 private:
 	map<int, SmartGraph::Node> nodeMap;
+	map<pair<SmartGraph::Node, SmartGraph::Node>, double> nodeDistance;
 };
