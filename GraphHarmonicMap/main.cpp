@@ -9,8 +9,9 @@ int main()
     CGraphHarmoicMap * map = new CGraphHarmoicMap();
     map->setMesh("eight.m");
     map->setGraph("eight.target");
-    map->test();
-    //map->harmonicMap();
+    //map->test();
+    map->harmonicMap();
+	map->writeMap("eight.harmonic");
 
     return 0;
 }

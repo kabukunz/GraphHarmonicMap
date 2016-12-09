@@ -7,7 +7,7 @@
 using namespace MeshLib;
 
 #ifndef EPS
-#define EPS 1e-6
+#define EPS 1e-8
 #endif // !EPS
 
 

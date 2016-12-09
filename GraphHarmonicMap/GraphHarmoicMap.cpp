@@ -1,6 +1,6 @@
+#include <cstdlib>
 #include "GraphHarmoicMap.h"
 #include <lemon/dijkstra.h>
-
 
 
 CGraphHarmoicMap::CGraphHarmoicMap()
@@ -29,7 +29,7 @@ int CGraphHarmoicMap::setGraph(string filename)
     if (!mesh)
     {
         cerr << "read mesh first" << endl;
-        exit(-1);
+		exit(-1);
         return -1;
     }
     
@@ -44,11 +44,28 @@ int CGraphHarmoicMap::setGraph(string filename)
     {
         CVertex * v = *vit;
         CTarget * t = new CTarget();
-        int i = rand() % ne;
+		double z = v->point()[2];
+		if (z > 0.4)
+		{
+			t->edge = edges[2];
+		}
+		else if (z < -0.4)
+		{
+			t->edge = edges[1];
+		} 
+		else
+		{
+			t->edge = edges[0];
+		}
+		auto u = graph->g.u(t->edge);
+		t->node = u;
+		t->length = graph->edgeLength[t->edge] / 2;
+        /*int i = rand() % ne;
         t->edge = edges[i];
 		auto u = graph->g.u(t->edge);
         t->node = u;
-        t->length = graph->edgeLength[t->edge] / 3.0;
+		double r = rand() / (double)RAND_MAX;
+        t->length = graph->edgeLength[t->edge] * r;*/
         v->prop("target") = t;
     }
     return 0;
@@ -148,14 +165,30 @@ double CGraphHarmoicMap::distance(CTarget * x, CTarget * y)
 	double dey = distance(x, ey, nx, ny);
 	if (uy == vy) // y is a loop
 	{
-		if (y->length > ely / 2.0) dey += ely - y->length;
-		else dey += y->length;
+		if (ex == ey)
+		{
+			dey = fabs(x->length - y->length);
+			if (dey > ely / 2.0) dey = ely - dey;
+		} 
+		else
+		{
+			if (y->length > ely / 2.0) dey += ely - y->length;
+			else dey += y->length;
+		}
 	}
 	else
 	{
-		// ny is the node nearer to x, if it is the starting node of y
-		if (ny == uy) dey += y->length;
-		else dey += ely - y->length;
+		if (ex == ey) // x, y on same edge
+		{
+			dey = fabs(x->length - y->length);
+		} 
+		else
+		{
+			// ny is the node nearer to x, if it is the starting node of y
+			if (ny == uy) dey = fabs(dey - y->length);
+			else dey += ely - y->length;
+		}
+		
 	}
 	return dey;
 }
@@ -253,7 +286,6 @@ double CGraphHarmoicMap::calculateBarycenter(CVertex * v)
 		neit.push_back(vt);
 		double w = he->edge()->prop("weight");
         ew.push_back(w);
-
     }
     double a = 0.0;
     for (double w : ew) a += w;
@@ -274,7 +306,7 @@ double CGraphHarmoicMap::calculateBarycenter(CVertex * v)
 			if (b)
 			{
 				if (vt->length < el / 2.0) bp.push_back(vt->length + el / 2.0);
-				else bp.push_back(vt->length + el / 2.0);
+				else bp.push_back(vt->length - el / 2.0);
 			}
 			be.push_back(b);
 		}
@@ -335,20 +367,59 @@ double CGraphHarmoicMap::calculateBarycenter(CVertex * v)
 			vx.push_back(t);            
         }
         
-
         else // if e is not loop
         {
-
-            // find those nei on this edge
-
-
-            // find minimum point on this edge
-
+			vector<double> bx;
+			for (int i = 0; i < neit.size(); ++i)
+			{
+				if (be[i])
+				{
+					double x = -neit[i]->length;
+					bx.push_back(x);
+				}
+				else
+				{
+					double du = distance(neit[i], u);
+					double dv = distance(neit[i], v);
+					if (du <= dv) bx.push_back(du);
+					else bx.push_back(-dv - el);
+				}
+			}
+			double b = 0.0, c = 0.0;
+			for (int j = 0; j < bx.size(); ++j)
+			{
+				b += 2 * ew[j] * bx[j];
+				c += ew[j] * bx[j] * bx[j];
+			}
+			CTarget * t = new CTarget();
+			t->edge = e;
+			t->node = u;
+			t->length = 0.0;
+			double x = 0;
+			double mi = quadraticMininum(a, b, c, 0, el, x);
+			t->length = x;
+			fm.push_back(mi);
+			vx.push_back(t);
         }
         
     }
 
-    return 0;
+	double fmm = fm[0];
+	CTarget * vm = vx[0];
+	for (int i = 1; i < fm.size(); ++i)
+	{
+		if (fm[i] < fmm)
+		{
+			fmm = fm[i];
+			vm = vx[i];
+		}
+	}
+	void * t = v->prop("target");
+	CTarget * vt = (CTarget*)t;
+	double dv = distance(vm, vt);
+	v->prop("target") = vm;
+	delete vt;
+    return dv;
 }
 
 /*
@@ -358,15 +429,24 @@ int CGraphHarmoicMap::harmonicMap()
 {
     calculateEdgeLength();
     calculateEdgeWeight();
-	double err = 0;
+	vector<CVertex*> vv;
+	for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+	{
+		CVertex * v = *vit;
+		vv.push_back(v);
+	}
     int k = 0;
-    while (k < 100)
+    while (k++ < 5000)
     {
-        for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+		double err = 0;
+		random_shuffle(vv.begin(), vv.end());
+		#pragma omp for nowait
+		for(int i = 0; i<vv.size(); ++i)
         {
-            double d = calculateBarycenter(*vit);
+            double d = calculateBarycenter(vv[i]);
 			if (d > err) err = d;
         }
+		cout << k << ": " << err << endl;
 		if (err < EPS) break;
     }
 
@@ -385,10 +465,21 @@ void CGraphHarmoicMap::test()
 
 	calculateEdgeLength();
 	calculateEdgeWeight();
-	double db = calculateBarycenter(v0);
+	double db = calculateBarycenter(v1);
+	harmonicMap();
 }
 
 int CGraphHarmoicMap::writeMap(string filename)
 {
+	ofstream map(filename);
+	for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+	{
+		CVertex * v = *vit;
+		void * t = v->prop("target");
+		CTarget * vt = (CTarget*)t;
+		CPoint & p = v->point();
+		map << graph->g.id(vt->edge) << " " << graph->g.id(vt->node) << " " << vt->length << endl;
+	}
+
     return 0;
 }
