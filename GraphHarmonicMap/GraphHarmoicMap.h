@@ -20,7 +20,7 @@ class CTarget
 {
 public:
     SmartGraph::Edge edge;
-	SmartGraph::Node node;
+    SmartGraph::Node node;
     double length;
 };
 

@@ -102,9 +102,14 @@ int CGraphHarmoicMap::calculateEdgeWeight()
  */
 inline double quadraticMininum(double a, double b, double c, double x0, double x1, double &x)
 {
-    auto fun = [=](double x) { return a * x * x + b * x + c; };
-    double f0 = fun(x0);
-    double f1 = fun(x1);
+    auto func = [=](double x) { return a * x * x + b * x + c; };
+	/*if (fabs(x0 - x1) < EPS)
+	{
+		x = (x0 + x1) / 2;
+		return func(x);
+	}*/
+    double f0 = func(x0);
+    double f1 = func(x1);
     x = x0;
     double fm = f0;
     if(f1 < f0)
@@ -113,7 +118,7 @@ inline double quadraticMininum(double a, double b, double c, double x0, double x
         fm = f1;
     }
     double x2 = -b/a/2.0;
-    double f2 = fun(x2);
+    double f2 = func(x2);
     if(x0 < x2 && x2 < x1)
     {
         if(f2 < fm)
@@ -236,12 +241,19 @@ double CGraphHarmoicMap::distance(CTarget * x, SmartGraph::Node n)
 double CGraphHarmoicMap::calculateBarycenter(CVertex * v)
 {
     vector<CVertex*> nei;
+	vector<CTarget*> neit;
     vector<double> ew;
     for (VertexOutHalfedgeIterator heit(mesh, v); !heit.end(); ++heit)
     {
         CHalfEdge * he = *heit;
-        nei.push_back(he->target());
-        ew.push_back(he->edge()->prop("weight"));
+		CVertex * v = he->target();
+		void * t = v->prop("target");
+		CTarget * vt = (CTarget*)t;
+        nei.push_back(v);
+		neit.push_back(vt);
+		double w = he->edge()->prop("weight");
+        ew.push_back(w);
+
     }
     double a = 0.0;
     for (double w : ew) a += w;
@@ -252,11 +264,75 @@ double CGraphHarmoicMap::calculateBarycenter(CVertex * v)
     {		
 		auto u = graph->g.u(e);
 		auto v = graph->g.v(e);
+		double el = graph->edgeLength[e];
+		vector<bool> be;
+		vector<double> bp = { 0, el / 2.0, el };
+		for (auto it = neit.begin(); it != neit.end(); ++it)
+		{
+			CTarget * vt = *it;
+			bool b = vt->edge == e;
+			if (b)
+			{
+				if (vt->length < el / 2.0) bp.push_back(vt->length + el / 2.0);
+				else bp.push_back(vt->length + el / 2.0);
+			}
+			be.push_back(b);
+		}
         if (u == v) // if e is a loop
         {
-            // find those nei on this loop
-
-            // find minimum point in this loop
+			sort(bp.begin(), bp.end());
+			vector<double> bx0;
+			for (int i = 0; i < neit.size(); ++i)
+			{
+				if (be[i])
+				{
+					double x = -neit[i]->length;
+					bx0.push_back(x);
+				}
+				else
+				{
+					double dy = distance(neit[i], u);
+					bx0.push_back(dy);
+				}
+			}
+			// find minimum point in this loop
+			CTarget * t = new CTarget();
+			t->edge = e;
+			t->node = u;
+			t->length = 0.0;
+			double ei = 1.0 / EPS;
+			for (int i = 0; i < bp.size() - 1; ++i)
+			{
+				vector<double> bx(bx0);
+				double x0 = bp[i];
+				double x1 = bp[i + 1];
+				double xm = (x0 + x1) / 2.0;
+				
+				double b = 0.0, c = 0.0;
+				for (int j = 0; j < bx.size(); ++j)
+				{
+					if (be[j])
+					{
+						if (xm + bx[j] > el / 2.0) bx[j] -= el;
+						else if (xm + bx[j] < -el / 2.0) bx[j] += el;
+					}
+					else
+					{
+						if (xm > el / 2.0) bx[j] = -bx[j] - el;
+					}
+					b += 2 * ew[j] * bx[j];
+					c += ew[j] * bx[j] * bx[j];
+				}
+				double x = 0;
+				double mi = quadraticMininum(a, b, c, x0, x1, x);
+				if (mi < ei)
+				{
+					ei = mi;
+					t->length = x;
+				}
+			}			
+			fm.push_back(ei);
+			vx.push_back(t);            
         }
         
 
@@ -306,6 +382,10 @@ void CGraphHarmoicMap::test()
 	CTarget * tx = (CTarget*)x;
 	CTarget * ty = (CTarget*)y;
 	double d = distance(tx, ty);
+
+	calculateEdgeLength();
+	calculateEdgeWeight();
+	double db = calculateBarycenter(v0);
 }
 
 int CGraphHarmoicMap::writeMap(string filename)
