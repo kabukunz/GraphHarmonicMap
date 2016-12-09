@@ -1,7 +1,7 @@
 #include "Graph.h"
 
 
-CGraph::CGraph() : nodePosition(g), edgeLength(g)
+CGraph::CGraph() : nodePosition(g), edgeLength(g), dist(g)
 {
 
 }

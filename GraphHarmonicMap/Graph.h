@@ -20,13 +20,12 @@ public:
     ~CGraph();
 
     void read(string filename);
-    void write(string filename);
-
-    double distance(const SmartGraph::Node & n1, const SmartGraph::Node & n2);
+    void write(string filename);    
 
     SmartGraph g;
     SmartGraph::NodeMap<CPoint2> nodePosition;
     SmartGraph::EdgeMap<double> edgeLength;
+	SmartGraph::NodeMap<double> dist;
 
 private:
 	map<int, SmartGraph::Node> nodeMap;
