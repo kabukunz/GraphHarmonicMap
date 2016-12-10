@@ -22,15 +22,15 @@ public:
     void read(string filename);
     void write(string filename);
 
-	double distance(const SmartGraph::Node & n1, const SmartGraph::Node & n2);
+    double distance(const SmartGraph::Node & n1, const SmartGraph::Node & n2);
 
     SmartGraph g;
     SmartGraph::NodeMap<CPoint2> nodePosition;
     SmartGraph::EdgeMap<double> edgeLength;
-	SmartGraph::NodeMap<double> dist;
+    SmartGraph::NodeMap<double> dist;
 
 private:
-	map<int, SmartGraph::Node> nodeMap;
-	map<pair<SmartGraph::Node, SmartGraph::Node>, double> nodeDistance;
-	void calculateNodeDistance();
+    map<int, SmartGraph::Node> nodeMap;
+    map<pair<SmartGraph::Node, SmartGraph::Node>, double> nodeDistance;
+    void calculateNodeDistance();
 };

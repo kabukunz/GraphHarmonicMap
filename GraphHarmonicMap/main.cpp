@@ -11,7 +11,7 @@ int main()
     map->setGraph("eight.target");
     //map->test();
     map->harmonicMap();
-	map->writeMap("eight.harmonic");
+    map->writeMap("eight.harmonic");
 
     return 0;
 }

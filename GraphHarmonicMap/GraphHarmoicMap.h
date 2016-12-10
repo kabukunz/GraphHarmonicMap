@@ -36,15 +36,15 @@ public:
     int calculateEdgeLength();
     int calculateEdgeWeight();
 
-	double distance(CTarget * x, CTarget * y);
-	double distance(CTarget * x, const SmartGraph::Edge & e, SmartGraph::Node & nx, SmartGraph::Node & ne);	
-	double distance(CTarget * x, const SmartGraph::Node & n, SmartGraph::Node & nx);
-	double distance(CTarget * x, SmartGraph::Node n);
+    double distance(CTarget * x, CTarget * y);
+    double distance(CTarget * x, const SmartGraph::Edge & e, SmartGraph::Node & nx, SmartGraph::Node & ne);
+    double distance(CTarget * x, const SmartGraph::Node & n, SmartGraph::Node & nx);
+    double distance(CTarget * x, SmartGraph::Node n);
 
     double calculateBarycenter(CVertex * v, vector<CVertex*> & nei);
     int harmonicMap();
 
-	void test();
+    void test();
 
     int writeMap(string filename);
 
