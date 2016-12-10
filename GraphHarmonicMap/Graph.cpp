@@ -1,9 +1,9 @@
 #include "Graph.h"
-
+#include <lemon/dijkstra.h>
 
 CGraph::CGraph() : nodePosition(g), edgeLength(g), dist(g)
 {
-
+	
 }
 
 
@@ -56,6 +56,26 @@ void CGraph::write(string filename)
         }
         outfile << endl;
     }
+}
+
+double CGraph::distance(const SmartGraph::Node & n1, const SmartGraph::Node & n2)
+{
+	if (nodeDistance.size() == 0) calculateNodeDistance();
+	return nodeDistance[make_pair(n1, n2)];
+}
+
+void CGraph::calculateNodeDistance()
+{
+	auto dij = dijkstra(g, edgeLength).distMap(dist);
+	for (SmartGraph::NodeIt n1(g); n1 != INVALID; ++n1)
+	{
+		for (SmartGraph::NodeIt n2(g); n2 != INVALID; ++n2)
+		{
+			double d = 0.0;
+			if(n1 != n2) dij.dist(d).run(n1, n2);
+			nodeDistance[make_pair(n1, n2)] = d;
+		}
+	}
 }
 
 

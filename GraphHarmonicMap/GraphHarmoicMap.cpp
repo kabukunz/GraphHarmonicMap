@@ -1,9 +1,9 @@
 #include <cstdlib>
-#include "GraphHarmoicMap.h"
-#include <lemon/dijkstra.h>
 #include <omp.h>
 #include <queue>
 #include <set>
+#include <ctime>
+#include "GraphHarmoicMap.h"
 #include "Parser/parser.h"
 
 CGraphHarmoicMap::CGraphHarmoicMap()
@@ -70,37 +70,6 @@ int CGraphHarmoicMap::setGraph(string filename)
 	}
     
 	return 0;
-
-    int ne = edges.size();
-    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
-    {
-        CVertex * v = *vit;
-        CTarget * t = new CTarget();
-		double z = v->point()[2];
-		if (z > 0.4)
-		{
-			t->edge = edges[2];
-		}
-		else if (z < -0.4)
-		{
-			t->edge = edges[1];
-		} 
-		else
-		{
-			t->edge = edges[0];
-		}
-		auto u = graph->g.u(t->edge);
-		t->node = u;
-		t->length = graph->edgeLength[t->edge] / 2;
-        /*int i = rand() % ne;
-        t->edge = edges[i];
-		auto u = graph->g.u(t->edge);
-        t->node = u;
-		double r = rand() / (double)RAND_MAX;
-        t->length = graph->edgeLength[t->edge] * r;*/
-        v->prop("target") = t;
-    }
-    return 0;
 }
 
 int CGraphHarmoicMap::calculateEdgeLength()
@@ -152,11 +121,7 @@ int CGraphHarmoicMap::calculateEdgeWeight()
 inline double quadraticMininum(double a, double b, double c, double x0, double x1, double &x)
 {
     auto func = [=](double x) { return a * x * x + b * x + c; };
-	/*if (fabs(x0 - x1) < EPS)
-	{
-		x = (x0 + x1) / 2;
-		return func(x);
-	}*/
+
     double f0 = func(x0);
     double f1 = func(x1);
     x = x0;
@@ -264,23 +229,20 @@ double CGraphHarmoicMap::distance(CTarget * x, const SmartGraph::Node & n, Smart
 	auto u = graph->g.u(e);
 	auto v = graph->g.v(e);
 		
-	SmartGraph::NodeMap<double> dist(graph->g);
-	auto dij = dijkstra(graph->g, graph->edgeLength).distMap(dist);
+	
 	
 	if (u == v)
 	{
 		double dx = x->length;
 		if (dx > el / 2.0) dx = el - dx;
-		double d = 0.0;
-		dij.dist(d).run(n, u);
+		double d = graph->distance(n, u);
 		nx = u;
 		return dx + d;
 	}
 	else 
 	{
-		double d1 = 0.0, d2 = 0.0;
-		dij.dist(d1).run(n, u);
-		dij.dist(d2).run(n, v);
+		double d1 = graph->distance(n, u);
+		double d2 = graph->distance(n, v);		
 		if (d1 < d2)
 		{
 			double dx = x->length;
@@ -316,17 +278,6 @@ double CGraphHarmoicMap::calculateBarycenter(CVertex * v, vector<CVertex*> & nei
 		double w = mesh->vertexEdge(v,vj)->prop("weight");
 		ew.push_back(w);
 	}
-	/*for (VertexOutHalfedgeIterator heit(mesh, v); !heit.end(); ++heit)
-    {
-        CHalfEdge * he = *heit;
-		CVertex * vj = he->target();
-		void * t = vj->prop("target");
-		CTarget * vt = (CTarget*)t;
-        nei.push_back(vj);
-		neit.push_back(vt);
-		double w = he->edge()->prop("weight");
-        ew.push_back(w);
-    }*/
     double a = 0.0;
     for (double w : ew) a += w;
     
@@ -491,13 +442,13 @@ int CGraphHarmoicMap::harmonicMap()
 		}
 		neis.push_back(nei);
 	}
-
+	time_t start = clock();
 	int k = 0;
-    while (k++ < 5000)
+    while (k++ < 500)
     {
 		double err = 0;
 		//random_shuffle(vv.begin(), vv.end());
-		//#pragma omp parallel for
+		#pragma omp parallel for
 		for(int i = 0; i < vv.size(); ++i)
         {		
             double d = calculateBarycenter(vv[i], neis[i]);
@@ -507,7 +458,8 @@ int CGraphHarmoicMap::harmonicMap()
 		if (k % 500 == 0) writeMap("harmonic." + to_string(int(k / 500)));
 		if (err < EPS) break;
     }
-
+	time_t finish = clock();
+	cout << "elapsed time is " << (finish - start) / double(CLOCKS_PER_SEC) << endl;
     return 0;
 }
 
