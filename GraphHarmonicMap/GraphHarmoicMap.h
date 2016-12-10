@@ -41,7 +41,7 @@ public:
 	double distance(CTarget * x, const SmartGraph::Node & n, SmartGraph::Node & nx);
 	double distance(CTarget * x, SmartGraph::Node n);
 
-    double calculateBarycenter(CVertex* v);
+    double calculateBarycenter(CVertex * v, vector<CVertex*> & nei);
     int harmonicMap();
 
 	void test();

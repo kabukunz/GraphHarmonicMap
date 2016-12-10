@@ -1,7 +1,10 @@
 #include <cstdlib>
 #include "GraphHarmoicMap.h"
 #include <lemon/dijkstra.h>
-
+#include <omp.h>
+#include <queue>
+#include <set>
+#include "Parser/parser.h"
 
 CGraphHarmoicMap::CGraphHarmoicMap()
 {
@@ -32,12 +35,41 @@ int CGraphHarmoicMap::setGraph(string filename)
 		exit(-1);
         return -1;
     }
+
+	vector<SmartGraph::Edge> edges;
+	for (SmartGraph::EdgeIt e(graph->g); e != INVALID; ++e)
+	{
+		edges.push_back(e);
+	}
+
+	for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+	{
+		CVertex * v = *vit;
+		string s = v->string();
+		CParser parser(s);
+		list<CToken*> & tokens = parser.tokens();
+		
+		for (auto tit = tokens.begin(); tit != tokens.end(); ++tit)
+		{
+			CToken * pt = *tit;
+			if (pt->m_key == "target")
+			{
+				string str = strutil::trim(pt->m_value, "()");
+				istringstream iss(str);
+				int edgeId = 0;
+				int nodeId = 0;
+				double length = 0.0;
+				iss >> edgeId >> nodeId >> length;				
+				CTarget * t = new CTarget();
+				t->edge = graph->g.edgeFromId(edgeId);				
+				t->node = graph->g.u(t->edge);
+				t->length = length;
+				v->prop("target") = t;
+			}
+		}
+	}
     
-    vector<SmartGraph::Edge> edges;
-    for (SmartGraph::EdgeIt e(graph->g); e != INVALID; ++e)
-    {
-        edges.push_back(e);
-    }
+	return 0;
 
     int ne = edges.size();
     for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
@@ -271,22 +303,30 @@ double CGraphHarmoicMap::distance(CTarget * x, SmartGraph::Node n)
 }
 
 
-double CGraphHarmoicMap::calculateBarycenter(CVertex * v)
+double CGraphHarmoicMap::calculateBarycenter(CVertex * v, vector<CVertex*> & nei)
 {
-    vector<CVertex*> nei;
+    //vector<CVertex*> nei;	
 	vector<CTarget*> neit;
     vector<double> ew;
-    for (VertexOutHalfedgeIterator heit(mesh, v); !heit.end(); ++heit)
+	for (auto * vj : nei)
+	{
+		void * t = vj->prop("target");
+		CTarget * vt = (CTarget*)t;
+		neit.push_back(vt);
+		double w = mesh->vertexEdge(v,vj)->prop("weight");
+		ew.push_back(w);
+	}
+	/*for (VertexOutHalfedgeIterator heit(mesh, v); !heit.end(); ++heit)
     {
         CHalfEdge * he = *heit;
-		CVertex * v = he->target();
-		void * t = v->prop("target");
+		CVertex * vj = he->target();
+		void * t = vj->prop("target");
 		CTarget * vt = (CTarget*)t;
-        nei.push_back(v);
+        nei.push_back(vj);
 		neit.push_back(vt);
 		double w = he->edge()->prop("weight");
         ew.push_back(w);
-    }
+    }*/
     double a = 0.0;
     for (double w : ew) a += w;
     
@@ -417,8 +457,14 @@ double CGraphHarmoicMap::calculateBarycenter(CVertex * v)
 	void * t = v->prop("target");
 	CTarget * vt = (CTarget*)t;
 	double dv = distance(vm, vt);
-	v->prop("target") = vm;
-	delete vt;
+	vt->edge = vm->edge;
+	vt->node = vm->node;
+	vt->length = vm->length;
+	
+	for (int i = 0; i < vx.size(); ++i)
+	{
+		delete vx[i];
+	}
     return dv;
 }
 
@@ -430,23 +476,35 @@ int CGraphHarmoicMap::harmonicMap()
     calculateEdgeLength();
     calculateEdgeWeight();
 	vector<CVertex*> vv;
+	vector<vector<CVertex*>> neis;
+	
 	for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
 	{
 		CVertex * v = *vit;
 		vv.push_back(v);
+		vector<CVertex*> nei;
+		for (VertexOutHalfedgeIterator heit(mesh, v); !heit.end(); ++heit)
+		{
+			CHalfEdge * he = *heit;
+			CVertex * vj = he->target();						
+			nei.push_back(vj);
+		}
+		neis.push_back(nei);
 	}
-    int k = 0;
+
+	int k = 0;
     while (k++ < 5000)
     {
 		double err = 0;
-		random_shuffle(vv.begin(), vv.end());
-		#pragma omp for nowait
-		for(int i = 0; i<vv.size(); ++i)
-        {
-            double d = calculateBarycenter(vv[i]);
+		//random_shuffle(vv.begin(), vv.end());
+		//#pragma omp parallel for
+		for(int i = 0; i < vv.size(); ++i)
+        {		
+            double d = calculateBarycenter(vv[i], neis[i]);
 			if (d > err) err = d;
         }
-		cout << k << ": " << err << endl;
+		if (k % 100 == 0) cout << "#" << k << ": " << err << endl;
+		if (k % 500 == 0) writeMap("harmonic." + to_string(int(k / 500)));
 		if (err < EPS) break;
     }
 
@@ -465,7 +523,7 @@ void CGraphHarmoicMap::test()
 
 	calculateEdgeLength();
 	calculateEdgeWeight();
-	double db = calculateBarycenter(v1);
+	//double db = calculateBarycenter(v1);
 	harmonicMap();
 }
 
