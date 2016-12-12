@@ -4,14 +4,23 @@
 #include "stdafx.h"
 #include "GraphHarmoicMap.h"
 
-int main()
+int main(int argc, char * argv[])
 {
+    if (argc < 3)
+    {
+        cout << "usage: GraphHarmonicMap meshfilename graphfilename [cutfilename]" << endl;
+        return -1;
+    }
     CGraphHarmoicMap * map = new CGraphHarmoicMap();
-    map->setMesh("eight.5.m");
-    map->setGraph("eight.target");
-    //map->test();
+    string meshfilename(argv[1]);
+    string graphfilename(argv[2]);
+    string cutfilename(argv[3]);
+
+    map->setMesh(meshfilename);
+    map->setGraph(graphfilename, cutfilename);
     map->harmonicMap();
-    map->writeMap("eight.harmonic");
+
+    map->writeMap(meshfilename);
 
     return 0;
 }

@@ -7,13 +7,14 @@
 #include <sstream>
 #include "lemon/smart_graph.h"
 #include "lemon/static_graph.h"
+#include "Mesh/Base.h"
 #include "Geometry/Point2.h"
 
 using namespace std;
 using namespace lemon;
 using namespace MeshLib;
 
-class CGraph
+class CGraph : public CBase
 {
 public:
     CGraph();
@@ -28,6 +29,7 @@ public:
     SmartGraph::NodeMap<CPoint2> nodePosition;
     SmartGraph::EdgeMap<double> edgeLength;
     SmartGraph::NodeMap<double> dist;
+    SmartGraph::EdgeMap<int> sign;
 
 private:
     map<int, SmartGraph::Node> nodeMap;

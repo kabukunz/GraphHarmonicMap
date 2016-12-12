@@ -4,3 +4,6 @@
 [submodule "lemon"]
 	path = lemon
 	url = https://github.com/cfwen/lemon.git
+[submodule "eigen"]
+	path = eigen
+	url = https://github.com/cfwen/eigen.git

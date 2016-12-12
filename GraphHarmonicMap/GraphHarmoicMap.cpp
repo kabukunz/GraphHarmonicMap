@@ -5,6 +5,7 @@
 #include <ctime>
 #include "GraphHarmoicMap.h"
 #include "Parser/parser.h"
+#include "Eigen/Eigen"
 
 CGraphHarmoicMap::CGraphHarmoicMap()
 {
@@ -17,23 +18,63 @@ CGraphHarmoicMap::~CGraphHarmoicMap()
 {
 }
 
-int CGraphHarmoicMap::setMesh(string filename)
+int CGraphHarmoicMap::setMesh(const string & filename)
 {
     mesh->read_m(filename.c_str());
+    mesh->prop("filename") = filename;
     return 0;
 }
 
 /*
 * read a target graph, place source vertex randomly on the graph: arc is chosen randomly, always place target at the middle of each arc
 */
-int CGraphHarmoicMap::setGraph(string filename)
+int CGraphHarmoicMap::setGraph(const string & graphfilename, const string & cutfilename = string())
 {
-    graph->read(filename);
+    graph->read(graphfilename);
+    graph->prop("filename") = graphfilename;
+    graph->prop("cutfilename") = cutfilename;
     if (!mesh)
     {
         cerr << "read mesh first" << endl;
         exit(-1);
         return -1;
+    }
+
+    ifstream cutfile(cutfilename);
+    if (cutfile.good())
+    {
+        Cut cuts;
+        map<int, int> seeds;
+        string line;
+        while (getline(cutfile, line))
+        {
+            std::istringstream iss(line);
+            string type;
+            int id, sign, vid;
+            iss >> type;
+            if (type[0] == '#') continue;
+            if (type == "Cut")
+            {
+                iss >> id >> sign;
+                auto edge = graph->g.edgeFromId(id);
+                graph->sign[edge] = sign;
+                vector<int> cut;
+                while (iss.good())
+                {
+                    iss >> vid;
+                    cut.push_back(vid);
+                }
+                cuts[id] = cut;
+            }
+            if (type == "Seed")
+            {
+                int id, seed;
+                iss >> id >> seed;
+                seeds[id] = seed;
+            }
+        }
+        initialMap(cuts, seeds);
+        return 0;
     }
 
     vector<SmartGraph::Edge> edges;
@@ -65,6 +106,12 @@ int CGraphHarmoicMap::setGraph(string filename)
                 t->node = graph->g.u(t->edge);
                 t->length = length;
                 v->prop("target") = t;
+            }
+            else
+            {
+                cout << "vertex target is needed" << endl;
+                exit(-1);
+                return -1;
             }
         }
     }
@@ -420,12 +467,323 @@ double CGraphHarmoicMap::calculateBarycenter(CVertex * v, vector<CVertex*> & nei
 }
 
 /*
+ * initial map consists of ordinary harmonic map from pants to a "Y" graph
+ */
+int CGraphHarmoicMap::initialMap(Cut & cuts, map<int, int> & seeds)
+{
+    calculateEdgeLength();
+    calculateEdgeWeight();
+    // renumber vertex
+    int i = 0;
+    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+    {
+        CVertex * v = *vit;
+        v->prop("id") = i++;
+        v->prop("cut") = false;
+        v->prop("cut2") = false;
+        v->prop("x") = double(0.0);
+        v->prop("y") = double(0.0);
+    }
+    // label cuts
+    for (auto c : cuts)
+    {
+        int id = c.first;
+        auto vs = c.second;
+        for (auto id : vs)
+        {
+            CVertex * v = mesh->idVertex(id);
+            v->prop("cut") = true;
+        }
+    }
+    // trace pants
+    map<int, vector<CVertex*>> pantss;
+    traceAllPants(seeds, pantss);
+
+    for (SmartGraph::NodeIt n(graph->g); n != INVALID; ++n)
+    {
+        for (SmartGraph::OutArcIt oa(graph->g, n); oa != INVALID; ++oa)
+        {
+            SmartGraph::Edge e = oa;
+            int id = graph->g.id(e);
+            int sign = graph->sign[e];
+            double length = graph->edgeLength[e];
+            auto & cut = cuts[id];
+            vector<CVertex*> vs1, vs2;
+            findNeighbors(cut, vs1, vs2);
+            if (graph->g.u(e) == graph->g.v(e)) // is a loop
+            {
+                // find two side neighbors of cut
+                for (auto v : vs1)
+                {
+                    v->prop("x") = double(sign) * length / 2.0;
+                    v->prop("y") = double(0.0);
+                    v->prop("cut2") = true;
+                }
+                for (auto v : vs2)
+                {
+                    v->prop("x") = double(0.0);
+                    v->prop("y") = double(sign) * length / 2.0;
+                    v->prop("cut2") = true;
+                }
+            }
+
+            for (auto i : cut)
+            {
+                CVertex * v = mesh->idVertex(i);
+                double l = double(sign) * length / 2.0;
+                v->prop("x") = l;
+                v->prop("y") = l;
+                v->prop("cut2") = true;
+            }
+
+        }
+    }
+
+    // compute harmonic map
+    typedef Eigen::Triplet<double> T;
+    vector<T> triplets, tripletsb;
+    int nv = mesh->numVertices();
+    int ne = mesh->numEdges();
+    triplets.reserve(ne * 2 + nv * 2);
+    Eigen::SparseMatrix<double> A(nv, nv);
+    Eigen::SparseMatrix<double> B(nv, nv);
+    Eigen::VectorXd x, y;
+    Eigen::VectorXd bx, by;
+    bx.setZero(mesh->numVertices(), 1);
+    by.setZero(mesh->numVertices(), 1);
+
+    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+    {
+        CVertex * v = *vit;
+        int id = v->prop("id");
+        bool isCut = v->prop("cut");
+        bool isCut2 = v->prop("cut2");
+        bool c = isCut || isCut2;
+        if (!c)
+        {
+            for (VertexVertexIterator vvit(v); !vvit.end(); ++vvit)
+            {
+                CVertex * v2 = *vvit;
+                int id2 = v2->prop("id");
+                bool isCut = v2->prop("cut");
+                bool isCut2 = v2->prop("cut2");
+                bool c2 = isCut || isCut2;
+                CEdge * e = mesh->vertexEdge(v, v2);
+                double w = e->prop("weight");
+                triplets.push_back(T(id, id, -w));
+                if (!c2)
+                {
+                    triplets.push_back(T(id, id2, w));
+                }
+                else
+                {
+                    tripletsb.push_back(T(id, id2, w));
+                }
+            }
+        }
+        else
+        {
+            triplets.push_back(T(id, id, 1));
+            double x = v->prop("x");
+            double y = v->prop("y");
+            bx[id] = x;
+            by[id] = y;
+        }
+    }
+
+    A.setFromTriplets(triplets.begin(), triplets.end());
+    A.finalize();
+
+    B.setFromTriplets(tripletsb.begin(), tripletsb.end());
+    B.finalize();
+
+    bx -= B * bx;
+    by -= B * by;
+
+    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
+    solver.compute(A);
+    if (solver.info() != Eigen::Success)
+    {
+        cerr << "waring: Eigen decomposition failed" << endl;
+    }
+    x = solver.solve(bx);
+    y = solver.solve(by);
+
+    ofstream ofsx("x");
+    ofsx << x;
+    ofstream ofsy("y");
+    ofsy << y;
+    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+    {
+        CVertex * v = *vit;
+        int id = v->prop("id");
+        double xi = x[id];
+        double yi = y[id];
+        v->prop("x") = xi;
+        v->prop("y") = yi;
+    }
+
+    // set initial vertex position on the graph
+    for (SmartGraph::NodeIt n(graph->g); n != INVALID; ++n)
+    {
+        vector<SmartGraph::Edge> edges;
+        vector<int> signs;
+        int id = graph->g.id(n);
+        vector<CVertex*> & pants = pantss[id];
+        for (SmartGraph::OutArcIt oa(graph->g, n); oa != INVALID; ++oa)
+        {
+            SmartGraph::Edge e = oa;
+            int sign = graph->sign[e];
+            edges.push_back(e);
+            signs.push_back(sign);
+        }
+
+        SmartGraph::Edge e0, e1, e2;
+        if (signs[0] + signs[1] + signs[2] == 1) // -1, +1, +1
+        {
+            if (signs[0] == -1)
+            {
+                e0 = edges[0]; signs[0] = -1;
+                e1 = edges[1]; signs[1] = 1;
+                e2 = edges[2]; signs[2] = 1;
+            }
+            else
+            {
+                if (signs[1] == -1)
+                {
+                    e0 = edges[1]; signs[0] = -1;
+                    e1 = edges[0]; signs[1] = 1;
+                    e2 = edges[2]; signs[2] = 1;
+                }
+                else
+                {
+                    e0 = edges[2]; signs[0] = -1;
+                    e1 = edges[0]; signs[1] = 1;
+                    e2 = edges[1]; signs[2] = 1;
+                }
+            }
+            bool isLoop = e1 == e2;
+            for (auto v : pants)
+            {
+                bool isCut = v->prop("cut");
+                bool isCut2 = v->prop("cut2");
+                CTarget * t = new CTarget();
+                t->node = n;
+                double x = v->prop("x");
+                double y = v->prop("y");
+                if (x <= 0 && y <= 0)
+                {
+                    t->edge = e0;
+                    t->length = (x + y) / 2.0;
+                }
+                if (isLoop)
+                {
+                    if (x > y)
+                    {
+                        t->edge = e1;
+                        t->length = x;
+                    }
+                    else
+                    {
+                        t->edge = e2;
+                        t->length = graph->edgeLength[t->edge] - y;
+                    }
+                }
+                else
+                {
+                    if (x > 0)
+                    {
+                        t->edge = e1;
+                        t->length = x;
+                    }
+                    else if (y > 0)
+                    {
+                        t->edge = e2;
+                        t->length = y;
+                    }
+                }
+
+                if (isCut || isCut2) t->length = graph->edgeLength[t->edge] / 2.0;
+                v->prop("target") = t;
+            }
+        }
+        else // +1, -1, -1
+        {
+            if (signs[0] == 1)
+            {
+                e0 = edges[0]; signs[0] = 1;
+                e1 = edges[1]; signs[1] = -1;
+                e2 = edges[2]; signs[2] = -1;
+            }
+            else
+            {
+                if (signs[1] == 1)
+                {
+                    e0 = edges[1]; signs[0] = 1;
+                    e1 = edges[0]; signs[1] = -1;
+                    e2 = edges[2]; signs[2] = -1;
+                }
+                else
+                {
+                    e0 = edges[2]; signs[0] = 1;
+                    e1 = edges[0]; signs[1] = -1;
+                    e2 = edges[1]; signs[2] = -1;
+                }
+            }
+            bool isLoop = e1 == e2;
+            for (auto v : pants)
+            {
+                bool isCut = v->prop("cut");
+                bool isCut2 = v->prop("cut2");
+                CTarget * t = new CTarget();
+                t->node = n;
+                double x = v->prop("x");
+                double y = v->prop("y");
+                if (x >= 0 && y >= 0)
+                {
+                    t->edge = e0;
+                    t->length = (x + y) / 2.0;
+                }
+                if (isLoop)
+                {
+                    if (x < y)
+                    {
+                        t->edge = e1;
+                        t->length = -x;
+                    }
+                    else
+                    {
+                        t->edge = e2;
+                        t->length = graph->edgeLength[t->edge] + y;
+                    }
+                }
+                else
+                {
+                    if (x < 0)
+                    {
+                        t->edge = e1;
+                        t->length = -x;
+                    }
+                    else if (y < 0)
+                    {
+                        t->edge = e2;
+                        t->length = -y;
+                    }
+                }
+
+                if (isCut || isCut2) t->length = graph->edgeLength[t->edge] / 2.0;
+                v->prop("target") = t;
+            }
+        }
+    }
+    return 0;
+}
+
+/*
  * for every vertex, move it to its neighbors' weighted center
 */
 int CGraphHarmoicMap::harmonicMap()
 {
-    calculateEdgeLength();
-    calculateEdgeWeight();
     vector<CVertex*> vv;
     vector<vector<CVertex*>> neis;
 
@@ -444,7 +802,7 @@ int CGraphHarmoicMap::harmonicMap()
     }
     time_t start = clock();
     int k = 0;
-    while (k++ < 2000)
+    while (k++ < 1000)
     {
         double err = 0;
         //random_shuffle(vv.begin(), vv.end());
@@ -460,6 +818,72 @@ int CGraphHarmoicMap::harmonicMap()
     }
     time_t finish = clock();
     cout << "elapsed time is " << (finish - start) / double(CLOCKS_PER_SEC) << endl;
+    return 0;
+}
+
+int CGraphHarmoicMap::traceAllPants(const map<int, int> & seeds, map<int, vector<CVertex*>> & pantss)
+{
+    for (auto s : seeds)
+    {
+        int id = s.first;
+        int seed = s.second;
+        vector<CVertex*> pants;
+        tracePants(id, seed, pants);
+        pantss[id] = pants;
+    }
+    return 0;
+}
+
+int CGraphHarmoicMap::tracePants(int id, int seed, vector<CVertex*> & pants)
+{
+    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+    {
+        CVertex * v = *vit;
+        v->touched() = false;
+    }
+    queue<CVertex*> qe;
+    CVertex * s = mesh->idVertex(seed);
+    qe.push(s);
+    pants.clear();
+    while (!qe.empty())
+    {
+        CVertex * v = qe.front();
+        qe.pop();
+        pants.push_back(v);
+        v->touched() = true;
+        v->prop("pants") = id;
+        bool isCut = v->prop("cut");
+        if (isCut) continue;
+        for (VertexVertexIterator vvit(v); !vvit.end(); ++vvit)
+        {
+            CVertex * vj = *vvit;
+            if (vj->touched()) continue;
+            bool isCut = vj->prop("cut");
+            if (!isCut) qe.push(vj);
+            else pants.push_back(vj);
+            vj->touched() = true;
+        }
+    }
+    return 0;
+}
+
+int CGraphHarmoicMap::findNeighbors(vector<int> & cut, vector<CVertex*> & vs1, vector<CVertex*> & vs2)
+{
+    vs1.clear();
+    vs2.clear();
+    for (int i = 0; i < cut.size() - 1; ++i)
+    {
+        CVertex * v0 = mesh->idVertex(cut[i]);
+        CVertex * v1 = mesh->idVertex(cut[i + 1]);
+        CHalfEdge * he = mesh->vertexHalfedge(v0, v1);
+        if (!he)
+        {
+            cerr << "cut can be be on boundary" << endl;
+            return -1;
+        }
+        vs1.push_back(he->he_next()->target());
+        vs2.push_back(he->he_sym()->he_next()->target());
+    }
     return 0;
 }
 
@@ -479,8 +903,12 @@ void CGraphHarmoicMap::test()
     harmonicMap();
 }
 
-int CGraphHarmoicMap::writeMap(string filename)
+int CGraphHarmoicMap::writeMap(string filename = string())
 {
+    int i = filename.find_last_of('.');
+    filename = filename.substr(0, i);
+    filename += ".harmonic";
+
     ofstream map(filename);
     for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
     {
@@ -488,7 +916,13 @@ int CGraphHarmoicMap::writeMap(string filename)
         void * t = v->prop("target");
         CTarget * vt = (CTarget*)t;
         CPoint & p = v->point();
-        map << graph->g.id(vt->edge) << " " << graph->g.id(vt->node) << " " << vt->length << endl;
+        auto e = vt->edge;
+        int sign = graph->sign[e];
+        double el = graph->edgeLength[e];
+        double x = vt->length;
+        if (fabs(x) > el / 2.0) x = (el - fabs(x)) * sign;
+        else x = x * sign;
+        map << graph->g.id(vt->edge) << " " << graph->g.id(vt->node) << " " << x << endl;
     }
 
     return 0;

@@ -1,7 +1,7 @@
 #include "Graph.h"
 #include <lemon/dijkstra.h>
 
-CGraph::CGraph() : nodePosition(g), edgeLength(g), dist(g)
+CGraph::CGraph() : nodePosition(g), edgeLength(g), dist(g), sign(g)
 {
 }
 

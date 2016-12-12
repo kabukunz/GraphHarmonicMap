@@ -24,14 +24,16 @@ public:
     double length;
 };
 
+typedef map<int, vector<int>> Cut;
+
 class CGraphHarmoicMap
 {
 public:
     CGraphHarmoicMap();
     ~CGraphHarmoicMap();
 
-    int setMesh(string filename);
-    int setGraph(string filename);
+    int setMesh(const string & filename);
+    int setGraph(const string & graphfilename, const string & cutfilename);
 
     int calculateEdgeLength();
     int calculateEdgeWeight();
@@ -42,7 +44,15 @@ public:
     double distance(CTarget * x, SmartGraph::Node n);
 
     double calculateBarycenter(CVertex * v, vector<CVertex*> & nei);
+
+    int initialMap(Cut & cuts, map<int, int> & seeds);
     int harmonicMap();
+
+    int traceAllPants(const map<int, int>& seeds, map<int, vector<CVertex*>>& pantss);
+
+    int tracePants(int id, int seed, vector<CVertex*>& pants);
+
+    int findNeighbors( vector<int> & cut, vector<CVertex*> & vs1, vector<CVertex*> & vs2);
 
     void test();
 
