@@ -1,0 +1,12 @@
+# Node #id x y
+Node 0 0 0
+Node 1 1 0
+Node 2 2 0
+Node 3 3 0
+# Arc #id n1 n2 length
+Arc 0 0 1 1.0
+Arc 1 0 2 1.0
+Arc 2 0 3 1.0
+Arc 3 1 2 2.0
+Arc 4 2 3 2.0
+Arc 5 3 1 2.0

@@ -26,11 +26,11 @@ public:
 
 typedef map<int, vector<int>> Cut;
 
-class CGraphHarmoicMap
+class CGraphHarmonicMap
 {
 public:
-    CGraphHarmoicMap();
-    ~CGraphHarmoicMap();
+    CGraphHarmonicMap();
+    ~CGraphHarmonicMap();
 
     int setMesh(const string & filename);
     int setGraph(const string & graphfilename, const string & cutfilename);
@@ -52,6 +52,9 @@ public:
 
     int tracePants(int id, int seed, vector<CVertex*>& pants);
 
+	int embedPants(SmartGraph::Node & node, vector<CVertex*> & pants);	
+	int embedPants(SmartGraph::Node & node, vector<CVertex*> & pants, SmartGraph::Edge & e0, SmartGraph::Edge & e1, SmartGraph::Edge & e2);
+
     int findNeighbors( vector<int> & cut, vector<CVertex*> & vs1, vector<CVertex*> & vs2);
 
     void test();
@@ -61,4 +64,5 @@ public:
 private:
     CMesh * mesh;
     CGraph * graph;
+	Cut cuts;
 };

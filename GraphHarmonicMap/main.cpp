@@ -2,7 +2,7 @@
 //
 
 #include "stdafx.h"
-#include "GraphHarmoicMap.h"
+#include "GraphHarmonicMap.h"
 
 int main(int argc, char * argv[])
 {
@@ -11,7 +11,7 @@ int main(int argc, char * argv[])
         cout << "usage: GraphHarmonicMap meshfilename graphfilename [cutfilename]" << endl;
         return -1;
     }
-    CGraphHarmoicMap * map = new CGraphHarmoicMap();
+    CGraphHarmonicMap * map = new CGraphHarmonicMap();
     string meshfilename(argv[1]);
     string graphfilename(argv[2]);
     string cutfilename(argv[3]);
@@ -19,6 +19,7 @@ int main(int argc, char * argv[])
     map->setMesh(meshfilename);
     map->setGraph(graphfilename, cutfilename);
     map->harmonicMap();
+//	map->test();
 
     map->writeMap(meshfilename);
 

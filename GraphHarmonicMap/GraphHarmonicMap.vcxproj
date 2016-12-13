@@ -155,12 +155,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Graph.h" />
-    <ClInclude Include="GraphHarmoicMap.h" />
+    <ClInclude Include="GraphHarmonicMap.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Graph.cpp" />
-    <ClCompile Include="GraphHarmoicMap.cpp" />
+    <ClCompile Include="GraphHarmonicMap.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="stdafx.cpp" />
   </ItemGroup>
