@@ -12,9 +12,7 @@ using namespace MeshLib;
 
 
 /*
-* represent a target on the graph, identified by an arc, and the direction, and the length from starting point
-* for a loop, there is only one starting point, but two directions: +1, -1;
-* for otherwise, there are two starting points +1 and -1, direction +1 means starting from +1, -1 starting from -1
+* represent a target on the graph, identified by an edge, and the starting node, and the length from starting node
 */
 class CTarget
 {
@@ -26,6 +24,7 @@ public:
 
 typedef map<int, vector<int>> Cut;
 typedef map<int, int> Seed;
+typedef map<int, vector<CVertex*>> Pants;
 
 class CGraphHarmonicMap
 {
@@ -67,5 +66,5 @@ private:
     CGraph * graph;
     Cut cuts;
     Seed seeds;
-	map<int, vector<CVertex*>> pantss;
+    Pants pantss;
 };
