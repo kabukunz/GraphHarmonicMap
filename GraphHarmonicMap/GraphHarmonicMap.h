@@ -7,7 +7,7 @@
 using namespace MeshLib;
 
 #ifndef EPS
-#define EPS 1e-8
+#define EPS 1e-6
 #endif // !EPS
 
 
@@ -25,6 +25,7 @@ public:
 };
 
 typedef map<int, vector<int>> Cut;
+typedef map<int, int> Seed;
 
 class CGraphHarmonicMap
 {
@@ -45,15 +46,15 @@ public:
 
     double calculateBarycenter(CVertex * v, vector<CVertex*> & nei);
 
-    int initialMap(Cut & cuts, map<int, int> & seeds);
+    int initialMap();
     int harmonicMap();
 
-    int traceAllPants(const map<int, int>& seeds, map<int, vector<CVertex*>>& pantss);
+    int traceAllPants();
 
     int tracePants(int id, int seed, vector<CVertex*>& pants);
 
-	int embedPants(SmartGraph::Node & node, vector<CVertex*> & pants);	
-	int embedPants(SmartGraph::Node & node, vector<CVertex*> & pants, SmartGraph::Edge & e0, SmartGraph::Edge & e1, SmartGraph::Edge & e2);
+    int embedPants(SmartGraph::Node & node, vector<CVertex*> & pants);
+    int embedPants(SmartGraph::Node & node, vector<CVertex*> & pants, SmartGraph::Edge & e0, SmartGraph::Edge & e1, SmartGraph::Edge & e2);
 
     int findNeighbors( vector<int> & cut, vector<CVertex*> & vs1, vector<CVertex*> & vs2);
 
@@ -64,5 +65,7 @@ public:
 private:
     CMesh * mesh;
     CGraph * graph;
-	Cut cuts;
+    Cut cuts;
+    Seed seeds;
+	map<int, vector<CVertex*>> pantss;
 };

@@ -19,7 +19,7 @@ int main(int argc, char * argv[])
     map->setMesh(meshfilename);
     map->setGraph(graphfilename, cutfilename);
     map->harmonicMap();
-//	map->test();
+    //map->test();
 
     map->writeMap(meshfilename);
 

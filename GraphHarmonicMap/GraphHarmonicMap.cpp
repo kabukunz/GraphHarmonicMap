@@ -43,7 +43,6 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename, const string & cut
     ifstream cutfile(cutfilename);
     if (cutfile.good())
     {
-        map<int, int> seeds;
         string line;
         while (getline(cutfile, line))
         {
@@ -72,7 +71,7 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename, const string & cut
                 seeds[id] = seed;
             }
         }
-        initialMap(cuts, seeds);
+        initialMap();
         return 0;
     }
 
@@ -493,7 +492,7 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v, vector<CVertex*> & ne
 /*
  * initial map consists of ordinary harmonic map from pants to a "Y" graph
  */
-int CGraphHarmonicMap::initialMap(Cut & cuts, map<int, int> & seeds)
+int CGraphHarmonicMap::initialMap()
 {
     calculateEdgeLength();
     calculateEdgeWeight();
@@ -520,8 +519,7 @@ int CGraphHarmonicMap::initialMap(Cut & cuts, map<int, int> & seeds)
         }
     }
     // trace pants
-    map<int, vector<CVertex*>> pantss;
-    traceAllPants(seeds, pantss);
+    traceAllPants();
 
     for (auto p : pantss)
     {
@@ -571,7 +569,7 @@ int CGraphHarmonicMap::harmonicMap()
     }
     time_t start = clock();
     int k = 0;
-    while (k++ < 1000)
+    while (k < 2000)
     {
         double err = 0;
         //random_shuffle(vv.begin(), vv.end());
@@ -581,16 +579,17 @@ int CGraphHarmonicMap::harmonicMap()
             double d = calculateBarycenter(vv[i], neis[i]);
             if (d > err) err = d;
         }
-        if (k % 100 == 0) cout << "#" << k << ": " << err << endl;
-        if (k % 500 == 0) writeMap("harmonic." + to_string(int(k / 500)));
+        if (k % 50 == 0) cout << "#" << k << ": " << err << endl;
+        //if (k % 500 == 0) writeMap("harmonic." + to_string(int(k / 500)));
         if (err < EPS) break;
+        ++k;
     }
     time_t finish = clock();
     cout << "elapsed time is " << (finish - start) / double(CLOCKS_PER_SEC) << endl;
     return 0;
 }
 
-int CGraphHarmonicMap::traceAllPants(const map<int, int> & seeds, map<int, vector<CVertex*>> & pantss)
+int CGraphHarmonicMap::traceAllPants()
 {
     for (auto s : seeds)
     {
@@ -850,7 +849,7 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
         if (x >= 0 && y >= 0)
         {
             t->edge = e2;
-            t->length = (x + y) / 2.0;
+            t->length = x < y ? x : y;
         }
         else if (x < y)
         {
@@ -884,7 +883,7 @@ int CGraphHarmonicMap::findNeighbors(vector<int> & cut, vector<CVertex*> & vs1, 
         if (he1 && he1->source() == v0 && he1->target() == v1) he = he1;
         if (!he)
         {
-            cerr << "cut can be be on boundary" << endl;
+            cerr << "cut can not be on boundary" << endl;
             return -1;
         }
         vs1.push_back(he->he_next()->target());
@@ -926,9 +925,10 @@ int CGraphHarmonicMap::writeMap(string filename = string())
 {
     int i = filename.find_last_of('.');
     filename = filename.substr(0, i);
-    filename += ".harmonic";
+    string mapfilename = filename + ".harmonic";
+    string mfilename = filename + ".harmonic.m";
 
-    ofstream map(filename);
+    ofstream map(mapfilename);
     for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
     {
         CVertex * v = *vit;
@@ -939,10 +939,14 @@ int CGraphHarmonicMap::writeMap(string filename = string())
         int sign = graph->sign[e];
         double el = graph->edgeLength[e];
         double x = vt->length;
-        //if (x > el / 2.0) x = (el - x) * sign;
-        //else x = x * sign;
         map << graph->g.id(vt->edge) << " " << graph->g.id(vt->node) << " " << x << endl;
+        if (x > el / 2.0) x = (el - x) * sign;
+        else x = x * sign;
+        ostringstream oss;
+        oss << "uv=(" << x << " 0.43) target=(" << graph->g.id(vt->edge) << " " << graph->g.id(vt->node) << " " << x << ")";
+        v->string() = oss.str();
     }
+    mesh->write_m(mfilename.c_str());
 
     return 0;
 }
