@@ -1,7 +1,7 @@
 #include "Graph.h"
 #include <lemon/dijkstra.h>
 
-CGraph::CGraph() : nodePosition(g), edgeLength(g), dist(g), sign(g)
+CGraph::CGraph() : edgeLength(g), edgeSign(g), dist(g)
 {
 }
 
@@ -30,7 +30,7 @@ void CGraph::read(string filename)
         {
             iss >> id >> x >> y;
             auto n = g.addNode();
-            nodePosition[n] = CPoint2(x, y);
+            //nodePosition[n] = CPoint2(x, y);
             nodeMap[id] = n;
         }
         if (type == "Arc")

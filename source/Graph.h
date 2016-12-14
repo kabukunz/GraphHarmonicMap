@@ -8,11 +8,9 @@
 #include "lemon/smart_graph.h"
 #include "lemon/static_graph.h"
 #include "Mesh/Base.h"
-#include "Geometry/Point2.h"
 
 using namespace std;
 using namespace lemon;
-using namespace MeshLib;
 
 class CGraph : public CBase
 {
@@ -25,11 +23,10 @@ public:
 
     double distance(const SmartGraph::Node & n1, const SmartGraph::Node & n2);
 
-    SmartGraph g;
-    SmartGraph::NodeMap<CPoint2> nodePosition;
-    SmartGraph::EdgeMap<double> edgeLength;
-    SmartGraph::NodeMap<double> dist;
-    SmartGraph::EdgeMap<int> sign;
+	SmartGraph g;
+	SmartGraph::EdgeMap<double> edgeLength;
+	SmartGraph::EdgeMap<int> edgeSign;
+	SmartGraph::NodeMap<double> dist;
 
 private:
     map<int, SmartGraph::Node> nodeMap;

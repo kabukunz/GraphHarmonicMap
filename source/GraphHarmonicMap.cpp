@@ -55,7 +55,7 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename, const string & cut
             {
                 iss >> id >> sign;
                 auto edge = graph->g.edgeFromId(id);
-                graph->sign[edge] = sign;
+                graph->edgeSign[edge] = sign;
                 vector<int> cut;
                 while (iss.good())
                 {
@@ -907,7 +907,7 @@ int CGraphHarmonicMap::colorizeGraph()
         for (SmartGraph::OutArcIt oa(graph->g, n); oa != INVALID; ++oa)
         {
             SmartGraph::Edge e = oa;
-            graph->sign[e] = 0;
+            graph->edgeSign[e] = 0;
         }
     }
     int s = 1;
@@ -916,16 +916,16 @@ int CGraphHarmonicMap::colorizeGraph()
         for (SmartGraph::OutArcIt oa(graph->g, n); oa != INVALID; ++oa)
         {
             SmartGraph::Edge e = oa;
-            int sign = graph->sign[e];
+            int sign = graph->edgeSign[e];
             if (sign != 0) s = -sign;
         }
         for (SmartGraph::OutArcIt oa(graph->g, n); oa != INVALID; ++oa)
         {
             SmartGraph::Edge e = oa;
-            int sign = graph->sign[e];
+            int sign = graph->edgeSign[e];
             if (sign == 0)
             {
-                graph->sign[e] = s;
+                graph->edgeSign[e] = s;
                 s = -s;
             }
         }
@@ -982,7 +982,7 @@ int CGraphHarmonicMap::writeMap(string filename = string())
         CTarget * vt = (CTarget*)t;
         CPoint & p = v->point();
         auto e = vt->edge;
-        int sign = graph->sign[e];
+        int sign = graph->edgeSign[e];
         double el = graph->edgeLength[e];
         double x = vt->length;
         map << graph->g.id(vt->edge) << " " << graph->g.id(vt->node) << " " << x << endl;
