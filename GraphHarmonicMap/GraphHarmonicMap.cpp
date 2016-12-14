@@ -840,6 +840,7 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
         v->prop("y") = yi;
     }
 
+    double el1 = graph->edgeLength[e1];
     for (auto v : pants)
     {
         double x = v->prop("x");
@@ -859,7 +860,14 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
         else if (y <= x)
         {
             t->edge = e1;
-            t->length = -y;
+            if (e0 == e1)
+            {
+                t->length = el1 + y;
+            }
+            else
+            {
+                t->length = -y;
+            }
         }
         v->prop("target") = t;
     }
@@ -918,7 +926,6 @@ void CGraphHarmonicMap::test()
     double d = distance(tx, ty);
 
     double db = calculateBarycenter(vv[867], neis[867]);
-    harmonicMap();
 }
 
 int CGraphHarmonicMap::writeMap(string filename = string())
