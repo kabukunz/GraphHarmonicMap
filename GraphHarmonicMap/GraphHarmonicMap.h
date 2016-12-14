@@ -57,6 +57,9 @@ public:
 
     int findNeighbors( vector<int> & cut, vector<CVertex*> & vs1, vector<CVertex*> & vs2);
 
+    int colorizeGraph();
+    int traceCriticalTrajectory();
+
     void test();
 
     int writeMap(string filename);

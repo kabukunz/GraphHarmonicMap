@@ -900,8 +900,47 @@ int CGraphHarmonicMap::findNeighbors(vector<int> & cut, vector<CVertex*> & vs1, 
     return 0;
 }
 
+int CGraphHarmonicMap::colorizeGraph()
+{
+    for (SmartGraph::NodeIt n(graph->g); n != INVALID; ++n)
+    {
+        for (SmartGraph::OutArcIt oa(graph->g, n); oa != INVALID; ++oa)
+        {
+            SmartGraph::Edge e = oa;
+            graph->sign[e] = 0;
+        }
+    }
+    int s = 1;
+    for (SmartGraph::NodeIt n(graph->g); n != INVALID; ++n)
+    {
+        for (SmartGraph::OutArcIt oa(graph->g, n); oa != INVALID; ++oa)
+        {
+            SmartGraph::Edge e = oa;
+            int sign = graph->sign[e];
+            if (sign != 0) s = -sign;
+        }
+        for (SmartGraph::OutArcIt oa(graph->g, n); oa != INVALID; ++oa)
+        {
+            SmartGraph::Edge e = oa;
+            int sign = graph->sign[e];
+            if (sign == 0)
+            {
+                graph->sign[e] = s;
+                s = -s;
+            }
+        }
+    }
+    return 0;
+}
+
+int CGraphHarmonicMap::traceCriticalTrajectory()
+{
+    return 0;
+}
+
 void CGraphHarmonicMap::test()
 {
+    colorizeGraph();
     vector<CVertex*> vv;
     vector<vector<CVertex*>> neis;
 
@@ -950,7 +989,7 @@ int CGraphHarmonicMap::writeMap(string filename = string())
         if (x > el / 2.0) x = (el - x) * sign;
         else x = x * sign;
         ostringstream oss;
-        oss << "uv=(" << x << " 0.43) target=(" << graph->g.id(vt->edge) << " " << graph->g.id(vt->node) << " " << x << ")";
+        oss << "uv=(" << x << " 0.43) target=(" << graph->g.id(vt->edge) << " " << graph->g.id(vt->node) << " " << vt->length << ")";
         v->string() = oss.str();
     }
     mesh->write_m(mfilename.c_str());
