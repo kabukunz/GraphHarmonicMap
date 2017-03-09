@@ -1,13 +1,14 @@
 #pragma once
 
-#include "Mesh/Mesh.h"
-#include "Mesh/Iterators.h"
+#include "Mesh/mesh.h"
+#include "Mesh/iterators.h"
+#include "Mesh/dynamicmesh.h"
 #include "Graph.h"
 
 using namespace MeshLib;
 
 #ifndef EPS
-#define EPS 1e-6
+#define EPS 1e-7
 #endif // !EPS
 
 
@@ -45,7 +46,7 @@ public:
 
     double calculateBarycenter(CVertex * v, vector<CVertex*> & nei);
 
-    int initialMap();
+    int initialMap(string method = string("init"));
     int harmonicMap();
 
     int traceAllPants();
@@ -55,14 +56,20 @@ public:
     int embedPants(SmartGraph::Node & node, vector<CVertex*> & pants);
     int embedPants(SmartGraph::Node & node, vector<CVertex*> & pants, SmartGraph::Edge & e0, SmartGraph::Edge & e1, SmartGraph::Edge & e2);
 
-    int findNeighbors( vector<int> & cut, vector<CVertex*> & vs1, vector<CVertex*> & vs2);
-
-    int colorizeGraph();
-    int traceCriticalTrajectory();
+    int findNeighbors(vector<int> & cut, vector<CVertex*> & vs1, vector<CVertex*> & vs2);
 
     void test();
 
-    int writeMap(string filename);
+    int colorizeGraph();
+
+    int traceCriticalTrajectory();
+
+    int decompose();
+
+    bool hasCriticalPoint(CVertex * v0, CVertex * v1, CVertex * v2 = NULL);
+    CPoint locateCriticalPoint(CVertex * v0, CVertex * v1, CVertex * v2 = NULL);
+
+    int output(string filename);
 
 private:
     CMesh * mesh;
@@ -70,4 +77,6 @@ private:
     Cut cuts;
     Seed seeds;
     Pants pantss;
+
+    CDynamicMesh * dmesh;
 };

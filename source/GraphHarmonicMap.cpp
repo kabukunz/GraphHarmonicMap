@@ -4,7 +4,7 @@
 #include <set>
 #include <ctime>
 #include "GraphHarmonicMap.h"
-#include "Parser/parser.h"
+#include "parser/parser.h"
 #include "Eigen/Eigen"
 
 CGraphHarmonicMap::CGraphHarmonicMap()
@@ -71,47 +71,12 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename, const string & cut
                 seeds[id] = seed;
             }
         }
-        initialMap();
-        return 0;
     }
-
-    vector<SmartGraph::Edge> edges;
-    for (SmartGraph::EdgeIt e(graph->g); e != INVALID; ++e)
+    else
     {
-        edges.push_back(e);
-    }
-
-    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
-    {
-        CVertex * v = *vit;
-        string s = v->string();
-        CParser parser(s);
-        list<CToken*> & tokens = parser.tokens();
-
-        for (auto tit = tokens.begin(); tit != tokens.end(); ++tit)
-        {
-            CToken * pt = *tit;
-            if (pt->m_key == "target")
-            {
-                string str = strutil::trim(pt->m_value, "()");
-                istringstream iss(str);
-                int edgeId = 0;
-                int nodeId = 0;
-                double length = 0.0;
-                iss >> edgeId >> nodeId >> length;
-                CTarget * t = new CTarget();
-                t->edge = graph->g.edgeFromId(edgeId);
-                t->node = graph->g.u(t->edge);
-                t->length = length;
-                v->prop("target") = t;
-            }
-            else
-            {
-                cout << "vertex target is needed" << endl;
-                exit(-1);
-                return -1;
-            }
-        }
+        cout << "can't open cut file: " << cutfilename << endl;
+        exit(-1);
+        return -1;
     }
 
     return 0;
@@ -167,7 +132,7 @@ int CGraphHarmonicMap::calculateEdgeWeight()
  */
 inline double quadraticMininum(double a, double b, double c, double x0, double x1, double &x)
 {
-    auto func = [ = ](double x) { return a * x * x + b * x + c; };
+    auto func = [=](double x) { return a * x * x + b * x + c; };
 
     double f0 = func(x0);
     double f1 = func(x1);
@@ -474,10 +439,6 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v, vector<CVertex*> & ne
     void * t = v->prop("target");
     CTarget * vt = (CTarget*)t;
     double dv = distance(vm, vt);
-    if (dv > 0.01)
-    {
-        CVertex *v2 = v;
-    }
     vt->edge = vm->edge;
     vt->node = vm->node;
     vt->length = vm->length;
@@ -492,44 +453,89 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v, vector<CVertex*> & ne
 /*
  * initial map consists of ordinary harmonic map from pants to a "Y" graph
  */
-int CGraphHarmonicMap::initialMap()
+int CGraphHarmonicMap::initialMap(string method)
 {
     calculateEdgeLength();
     calculateEdgeWeight();
-    // renumber vertex
-    int i = 0;
-    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+
+    if (method == "continue")
     {
-        CVertex * v = *vit;
-        v->prop("id") = i++;
-        v->prop("cut") = false;
-        v->prop("cut2") = false;
-        v->prop("x") = double(0.0);
-        v->prop("y") = double(0.0);
-    }
-    // label cuts
-    for (auto c : cuts)
-    {
-        int id = c.first;
-        auto vs = c.second;
-        for (auto id : vs)
+        vector<SmartGraph::Edge> edges;
+        for (SmartGraph::EdgeIt e(graph->g); e != INVALID; ++e)
         {
-            CVertex * v = mesh->idVertex(id);
-            v->prop("cut") = true;
+            edges.push_back(e);
+        }
+
+        for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+        {
+            CVertex * v = *vit;
+            string s = v->string();
+            CParser parser(s);
+            list<CToken*> & tokens = parser.tokens();
+
+            bool hasTarget = false;
+            for (auto tit = tokens.begin(); tit != tokens.end(); ++tit)
+            {
+                CToken * pt = *tit;
+                if (pt->m_key == "target")
+                {
+                    string str = strutil::trim(pt->m_value, "()");
+                    istringstream iss(str);
+                    int edgeId = 0;
+                    int nodeId = 0;
+                    double length = 0.0;
+                    iss >> edgeId >> nodeId >> length;
+                    CTarget * t = new CTarget();
+                    t->edge = graph->g.edgeFromId(edgeId);
+                    t->node = graph->g.u(t->edge);
+                    t->length = length;
+                    v->prop("target") = t;
+                    hasTarget = true;
+                }
+            }
+            if (!hasTarget)
+            {
+                cout << "vertex target is needed" << endl;
+                exit(-1);
+            }
         }
     }
-    // trace pants
-    traceAllPants();
-
-    for (auto p : pantss)
+    else
     {
-        int id = p.first;
-        auto pants = p.second;
-        auto node = graph->g.nodeFromId(id);
-        embedPants(node, pants);
+        // renumber vertex
+        int i = 0;
+        for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+        {
+            CVertex * v = *vit;
+            v->prop("id") = i++;
+            v->prop("cut") = false;
+            v->prop("cut2") = false;
+            v->prop("x") = double(0.0);
+            v->prop("y") = double(0.0);
+        }
+        // label cuts
+        for (auto c : cuts)
+        {
+            int id = c.first;
+            auto vs = c.second;
+            for (auto id : vs)
+            {
+                CVertex * v = mesh->idVertex(id);
+                v->prop("cut") = true;
+            }
+        }
+        // trace pants
+        traceAllPants();
+
+        for (auto p : pantss)
+        {
+            int id = p.first;
+            auto pants = p.second;
+            auto node = graph->g.nodeFromId(id);
+            embedPants(node, pants);
+        }
     }
 
-    //return 0;
     for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
     {
         CVertex * v = *vit;
@@ -544,6 +550,7 @@ int CGraphHarmonicMap::initialMap()
             vt->length = graph->edgeLength[edge] - length;
         }
     }
+
     return 0;
 }
 
@@ -569,23 +576,53 @@ int CGraphHarmonicMap::harmonicMap()
     }
     time_t start = clock();
     int k = 0;
-    while (k < 2000)
+    while (k < 3000)
     {
         double err = 0;
         //random_shuffle(vv.begin(), vv.end());
-        #pragma omp parallel for
+#pragma omp parallel for
         for (int i = 0; i < vv.size(); ++i)
         {
             double d = calculateBarycenter(vv[i], neis[i]);
             if (d > err) err = d;
         }
-        if (k % 50 == 0) cout << "#" << k << ": " << err << endl;
+        if (k % 100 == 0) cout << "#" << k << ": " << err << endl;
         //if (k % 500 == 0) writeMap("harmonic." + to_string(int(k / 500)));
         if (err < EPS) break;
         ++k;
     }
     time_t finish = clock();
     cout << "elapsed time is " << (finish - start) / double(CLOCKS_PER_SEC) << endl;
+
+    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+    {
+        CVertex * v = *vit;
+        void * t = v->prop("target");
+        int eid = -1;
+        int nid = -1;
+        double length = 0.0;
+        double x = 0.0;
+        int sign = 0;
+        if (t)
+        {
+            CTarget * vt = (CTarget*)t;
+            CPoint & p = v->point();
+            auto e = vt->edge;
+            sign = graph->edgeSign[e];
+            double el = graph->edgeLength[e];
+            eid = graph->g.id(e);
+            nid = graph->g.id(vt->node);
+            length = vt->length;
+            x = vt->length;
+            //if (x > el / 2.0) x = (el - x) * sign;
+            //else x = x * sign;
+            x = x * sign;
+        }
+        ostringstream oss;
+        oss << "uv=(" << x << " 0.43) target=(" << eid << " " << nid << " " << length << ")";
+        v->string() = oss.str();
+    }
+
     return 0;
 }
 
@@ -658,7 +695,7 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
     {
         embedPants(node, pants, edges[0], edges[1], edges[2]);
     }
-    else if (edges[0] == edges[2] )
+    else if (edges[0] == edges[2])
     {
         embedPants(node, pants, edges[0], edges[2], edges[1]);
     }
@@ -806,10 +843,10 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
             by[id] = y;
         }
     }
-    ofstream ofsx("x");
-    ofsx << bx;
-    ofstream ofsy("y");
-    ofsy << by;
+    //ofstream ofsx("x");
+    //ofsx << bx;
+    //ofstream ofsy("y");
+    //ofsy << by;
 
     A.setFromTriplets(triplets.begin(), triplets.end());
     A.finalize();
@@ -900,6 +937,36 @@ int CGraphHarmonicMap::findNeighbors(vector<int> & cut, vector<CVertex*> & vs1, 
     return 0;
 }
 
+
+
+void CGraphHarmonicMap::test()
+{
+    vector<CVertex*> vv;
+    vector<vector<CVertex*>> neis;
+
+    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+    {
+        CVertex * v = *vit;
+        vv.push_back(v);
+        vector<CVertex*> nei;
+        for (VertexVertexIterator vit(v); !vit.end(); ++vit)
+        {
+            CVertex * vj = *vit;;
+            nei.push_back(vj);
+        }
+        neis.push_back(nei);
+    }
+    auto v0 = mesh->idVertex(868);
+    auto v1 = mesh->idVertex(100);
+    void * x = v0->prop("target");
+    void * y = v1->prop("target");
+    CTarget * tx = (CTarget*)x;
+    CTarget * ty = (CTarget*)y;
+    double d = distance(tx, ty);
+
+    double db = calculateBarycenter(vv[867], neis[867]);
+}
+
 int CGraphHarmonicMap::colorizeGraph()
 {
     for (SmartGraph::NodeIt n(graph->g); n != INVALID; ++n)
@@ -935,64 +1002,287 @@ int CGraphHarmonicMap::colorizeGraph()
 
 int CGraphHarmonicMap::traceCriticalTrajectory()
 {
+    colorizeGraph();
+
     return 0;
 }
 
-void CGraphHarmonicMap::test()
+int CGraphHarmonicMap::decompose()
 {
-    colorizeGraph();
-    vector<CVertex*> vv;
-    vector<vector<CVertex*>> neis;
-
     for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
     {
         CVertex * v = *vit;
-        vv.push_back(v);
-        vector<CVertex*> nei;
-        for (VertexVertexIterator vit(v); !vit.end(); ++vit)
-        {
-            CVertex * vj = *vit;;
-            nei.push_back(vj);
-        }
-        neis.push_back(nei);
-    }
-    auto v0 = mesh->idVertex(868);
-    auto v1 = mesh->idVertex(100);
-    void * x = v0->prop("target");
-    void * y = v1->prop("target");
-    CTarget * tx = (CTarget*)x;
-    CTarget * ty = (CTarget*)y;
-    double d = distance(tx, ty);
+        bool critical = false;
 
-    double db = calculateBarycenter(vv[867], neis[867]);
-}
-
-int CGraphHarmonicMap::writeMap(string filename = string())
-{
-    int i = filename.find_last_of('.');
-    filename = filename.substr(0, i);
-    string mapfilename = filename + ".harmonic";
-    string mfilename = filename + ".harmonic.m";
-
-    ofstream map(mapfilename);
-    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
-    {
-        CVertex * v = *vit;
         void * t = v->prop("target");
         CTarget * vt = (CTarget*)t;
-        CPoint & p = v->point();
-        auto e = vt->edge;
-        int sign = graph->edgeSign[e];
+        SmartGraph::Edge e = vt->edge;
         double el = graph->edgeLength[e];
-        double x = vt->length;
-        map << graph->g.id(vt->edge) << " " << graph->g.id(vt->node) << " " << x << endl;
-        if (x > el / 2.0) x = (el - x) * sign;
-        else x = x * sign;
-        ostringstream oss;
-        oss << "uv=(" << x << " 0.43) target=(" << graph->g.id(vt->edge) << " " << graph->g.id(vt->node) << " " << vt->length << ")";
-        v->string() = oss.str();
+        double l = vt->length;
+        if (l > el*0.75) l = el - l;
+        if (l <= el*EPS)
+        {
+            critical = true;
+        }
+        v->prop("critical") = critical;
     }
-    mesh->write_m(mfilename.c_str());
 
+    dmesh = new CDynamicMesh(mesh);
+    for (MeshFaceIterator fit(mesh); !fit.end(); ++fit)
+    {
+        CFace * f = *fit;
+        CHalfEdge * he = f->halfedge();
+        CVertex * v0 = he->source();
+        CVertex * v1 = he->target();
+        CVertex * v2 = he->he_next()->target();
+
+        if (hasCriticalPoint(v0, v1, v2))
+        {
+            CVertex * v3 = dmesh->splitFace(f);
+            v3->prop("critical") = true;
+            v3->prop("target") = (void*)NULL;
+            v3->point() = locateCriticalPoint(v0, v1, v2);
+        }
+    }
+
+    for (MeshEdgeIterator eit(mesh); !eit.end(); ++eit)
+    {
+        CEdge * e = *eit;
+        CVertex * v0 = e->halfedge(0)->source();
+        CVertex * v1 = e->halfedge(0)->target();
+        if (hasCriticalPoint(v0, v1))
+        {
+            CVertex *v2 = dmesh->splitEdge(e);
+            v2->prop("critical") = true;
+            v2->prop("target") = (void*)NULL;
+            v2->point() = locateCriticalPoint(v0, v1);
+        }
+    }
+
+    // label face
+    for (MeshFaceIterator fit(dmesh); !fit.end(); ++fit)
+    {
+        CFace * f = *fit;
+        CHalfEdge * he = f->halfedge();
+        CVertex * v0 = he->source();
+        CVertex * v1 = he->target();
+        CVertex * v2 = he->he_next()->target();
+        CVertex * vs;
+        // v0,v1,v2 must have same edge id or been critical
+        bool c0 = v0->prop("critical");
+        bool c1 = v1->prop("critical");
+        bool c2 = v2->prop("critical");
+        if (c0 && c1 && c2)
+        {
+            cout << "face can't have 3 critical vertices" << endl;
+            exit(-1);
+        }
+        set<int> eids;
+        if (!c0) {
+            void * t0 = v0->prop("target");
+            CTarget * vt0 = (CTarget*)t0;
+            SmartGraph::Edge e0 = vt0->edge;
+            eids.insert(graph->g.id(e0));
+            vs = v0;
+        }
+        if (!c1) {
+            void * t1 = v1->prop("target");
+            CTarget * vt1 = (CTarget*)t1;
+            SmartGraph::Edge e1 = vt1->edge;
+            eids.insert(graph->g.id(e1));
+            vs = v1;
+        }
+        if (!c2) {
+            void * t2 = v2->prop("target");
+            CTarget * vt2 = (CTarget*)t2;
+            SmartGraph::Edge e2 = vt2->edge;
+            eids.insert(graph->g.id(e2));
+            vs = v2;
+        }
+        if (eids.size() != 1)
+        {
+            cerr << "face not been splitted: " << f->id() << endl;
+            exit(-1);
+        }
+        int id = *eids.begin();
+        ostringstream oss;
+        oss << "e=(" << id << ")";
+        oss << " uv=(";
+
+        CTarget * vst;
+        for (int i = 0; i < 3; ++i)
+        {
+            CVertex * v = he->target();
+            bool c = v->prop("critical");
+            void * t = v->prop("target");
+            if (!c) vst = (CTarget*)t;
+            he = he->he_next();
+        }
+        if (!vst)
+        {
+            cerr << "face has 3 critical vertex" << endl;
+        }
+        SmartGraph::Edge es = vst->edge;
+        int sign = graph->edgeSign[es];
+        double length = graph->edgeLength[es];
+        for (int i = 0; i < 3; ++i)
+        {
+            CVertex * v = he->target();
+            bool c = v->prop("critical");
+            void * t = v->prop("target");
+            CTarget * vt = (CTarget*)t;
+            double x = 0.0;
+            if (c)
+            {
+                if (vst->length > length / 2.0)
+                {
+                    x = length * sign;
+                }
+            }
+            else
+            {
+                SmartGraph::Edge e = vt->edge;
+                int sign = graph->edgeSign[e];
+                x = vt->length * sign;
+            }
+            oss << x << " 0.43 ";
+            he = he->he_next();
+        }
+        oss << ")";
+        f->string() = oss.str();
+    }
+
+    for (MeshVertexIterator vit(dmesh); !vit.end(); ++vit)
+    {
+        CVertex * v = *vit;
+        bool c = v->prop("critical");
+        if (c)
+        {
+            v->string() = "uv=(0 0.43) target=(-1 -1 0)";
+        }
+    }
+
+    mesh = dmesh;
+    return 0;
+}
+
+bool CGraphHarmonicMap::hasCriticalPoint(CVertex * v0, CVertex * v1, CVertex * v2)
+{
+    // if any vertex is critical, then this face has no critical point inside;
+    // edge has critical point iff both vertices are critical, that case has been processed
+    bool critical0 = v0->prop("critical");
+    bool critical1 = v1->prop("critical");
+    if (v2 == NULL)
+    {
+        if (critical0 || critical1) return false;
+    }
+    else
+    {
+        bool critical2 = v2->prop("critical");
+        if (critical0 || critical1 || critical2) return false;
+    }
+
+
+    if (v2 == NULL) // edge case
+    {
+        void * t0 = v0->prop("target");
+        void * t1 = v1->prop("target");
+        CTarget * vt0 = (CTarget*)t0;
+        CTarget * vt1 = (CTarget*)t1;
+        SmartGraph::Edge e0 = vt0->edge;
+        SmartGraph::Edge e1 = vt1->edge;
+        if (e0 != e1) return true;
+
+        // e0 == e1
+        auto u = graph->g.u(e0);
+        auto v = graph->g.v(e0);
+        if (u != v) return false;// not a loop
+
+        // e0 == e1 is a loop
+        double el = graph->edgeLength[e0];
+        double l0 = vt0->length;
+        double l1 = vt1->length;
+
+        if (fabs(l0 - l1) > el / 2.0) return true;
+        else return false;
+    }
+    else // face case
+    {
+        void * t0 = v0->prop("target");
+        void * t1 = v1->prop("target");
+        void * t2 = v2->prop("target");
+        CTarget * vt0 = (CTarget*)t0;
+        CTarget * vt1 = (CTarget*)t1;
+        CTarget * vt2 = (CTarget*)t2;
+        SmartGraph::Edge e0 = vt0->edge;
+        SmartGraph::Edge e1 = vt1->edge;
+        SmartGraph::Edge e2 = vt2->edge;
+
+        if (e0 != e1 && e1 != e2 && e2 != e0) return true;
+        if (e0 == e1 && e1 == e2) return false;
+
+        if (e0 == e1 && e1 != e2) return hasCriticalPoint(v0, v1);
+        if (e1 == e2 && e2 != e0) return hasCriticalPoint(v1, v2);
+        if (e2 == e0 && e0 != e1) return hasCriticalPoint(v2, v0);
+    }
+    return false;
+}
+
+CPoint CGraphHarmonicMap::locateCriticalPoint(CVertex * v0, CVertex * v1, CVertex * v2)
+{
+    if (v2 == NULL) // ciritical point on edge
+    {
+        if (!hasCriticalPoint(v0, v1))
+        {
+            cout << "no critical point on this edge" << endl;
+            exit(-1);
+        }
+        void * t0 = v0->prop("target");
+        void * t1 = v1->prop("target");
+        CTarget * vt0 = (CTarget*)t0;
+        CTarget * vt1 = (CTarget*)t1;
+        SmartGraph::Edge e0 = vt0->edge;
+        SmartGraph::Edge e1 = vt1->edge;
+
+        double el0 = graph->edgeLength[e0];
+        double el1 = graph->edgeLength[e1];
+        double l0 = vt0->length;
+        double l1 = vt1->length;
+        if (l0 > el0*0.75) l0 = el0 - l0;
+        if (l1 > el1*0.75) l1 = el1 - l1;
+        CPoint p = (v0->point()*l1 + v1->point()*l0) / (l0 + l1);
+        return p;
+    }
+    else // critical point inside face
+    {
+        void * t0 = v0->prop("target");
+        void * t1 = v1->prop("target");
+        void * t2 = v2->prop("target");
+        CTarget * vt0 = (CTarget*)t0;
+        CTarget * vt1 = (CTarget*)t1;
+        CTarget * vt2 = (CTarget*)t2;
+        SmartGraph::Edge e0 = vt0->edge;
+        SmartGraph::Edge e1 = vt1->edge;
+        SmartGraph::Edge e2 = vt2->edge;
+        double el0 = graph->edgeLength[e0];
+        double el1 = graph->edgeLength[e1];
+        double el2 = graph->edgeLength[e2];
+        double l0 = vt0->length;
+        double l1 = vt1->length;
+        double l2 = vt2->length;
+        if (l0 > el0*0.75) l0 = el0 - l0;
+        if (l1 > el1*0.75) l1 = el1 - l1;
+        if (l2 > el2*0.75) l2 = el2 - l2;
+
+        CPoint p0 = (v1->point()*l2 + v2->point()*l1) / (l1 + l2);
+        CPoint p1 = (v2->point()*l0 + v0->point()*l2) / (l2 + l0);
+        CPoint p2 = (v0->point()*l1 + v1->point()*l0) / (l0 + l1);
+        return (p0 + p1 + p2) / 3.0;
+    }
+}
+
+int CGraphHarmonicMap::output(string filename)
+{
+    mesh->write_m(filename.c_str());
     return 0;
 }

@@ -10,10 +10,16 @@ CGraph::~CGraph()
 {
 }
 
-void CGraph::read(string filename)
+int CGraph::read(string filename)
 {
     g.clear();
     std::ifstream infile(filename);
+    if (!infile.good())
+    {
+        cout << "can't open graph file: " << filename << endl;
+        exit(-1);
+        return -1;
+    }
     string line;
 
     while (getline(infile, line))
@@ -41,9 +47,10 @@ void CGraph::read(string filename)
             edgeLength[arc] = l;
         }
     }
+    return 0;
 }
 
-void CGraph::write(string filename)
+int CGraph::write(string filename)
 {
     std::ofstream outfile(filename);
     for (SmartGraph::NodeIt n(g); n != INVALID; ++n)
@@ -55,6 +62,7 @@ void CGraph::write(string filename)
         }
         outfile << endl;
     }
+    return 0;
 }
 
 double CGraph::distance(const SmartGraph::Node & n1, const SmartGraph::Node & n2)

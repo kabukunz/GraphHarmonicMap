@@ -7,7 +7,7 @@
 #include <sstream>
 #include "lemon/smart_graph.h"
 #include "lemon/static_graph.h"
-#include "Mesh/Base.h"
+#include "base.h"
 
 using namespace std;
 using namespace lemon;
@@ -18,15 +18,15 @@ public:
     CGraph();
     ~CGraph();
 
-    void read(string filename);
-    void write(string filename);
+    int read(string filename);
+    int write(string filename);
 
     double distance(const SmartGraph::Node & n1, const SmartGraph::Node & n2);
 
-	SmartGraph g;
-	SmartGraph::EdgeMap<double> edgeLength;
-	SmartGraph::EdgeMap<int> edgeSign;
-	SmartGraph::NodeMap<double> dist;
+    SmartGraph g;
+    SmartGraph::EdgeMap<double> edgeLength;
+    SmartGraph::EdgeMap<int> edgeSign;
+    SmartGraph::NodeMap<double> dist;
 
 private:
     map<int, SmartGraph::Node> nodeMap;
