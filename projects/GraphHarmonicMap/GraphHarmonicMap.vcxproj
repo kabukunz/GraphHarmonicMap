@@ -13,13 +13,10 @@
   <ItemGroup>
     <ClCompile Include="..\..\source\Graph.cpp" />
     <ClCompile Include="..\..\source\GraphHarmonicMap.cpp" />
-    <ClCompile Include="..\..\source\main.cpp" />
-    <ClCompile Include="..\..\source\stdafx.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\source\Graph.h" />
     <ClInclude Include="..\..\source\GraphHarmonicMap.h" />
-    <ClInclude Include="..\..\source\stdafx.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{DF614A0B-0701-4762-B6A8-D54D9D6D90BB}</ProjectGuid>
