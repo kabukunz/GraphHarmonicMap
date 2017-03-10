@@ -45,6 +45,10 @@ if(${MSVC})
     set (CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /MT")
 endif()
 
+if(${CMAKE_COMPILER_IS_GNUCXX})
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
+endif()
+
 include_directories(third-party/MeshLib/base)
 include_directories(third-party/MeshLib/core)
 include_directories(third-party/eigen)
@@ -53,7 +57,7 @@ include_directories(third-party/eigen)
 set(LEMON_PATH "${PROJECT_ROOT}/third-party/lemon/")
 set(LEMON_INSTALL_DIR "${PROJECT_ROOT}/third-party/lemon/")
 include(ExternalProject)
-ExternalProject_Add(liblemon
+ExternalProject_Add(lemon
     PREFIX "${LEMON_PATH}"
     BINARY_DIR "${LEMON_PATH}/build"
     STAMP_DIR  "${LEMON_PATH}/build"
@@ -67,9 +71,15 @@ ExternalProject_Add(liblemon
         -DCMAKE_CXX_FLAGS_RELWITHDEBINFO=${CMAKE_CXX_FLAGS_RELWITHDEBINFO}
 )
 include_directories(third-party/lemon/include)
-add_library(lemon STATIC IMPORTED)
-set_property(TARGET lemon PROPERTY IMPORTED_LOCATION ${LEMON_INSTALL_DIR}/lib/lemon.*)
-add_dependencies(lemon liblemon)
+add_library(liblemon STATIC IMPORTED)
+add_dependencies(liblemon lemon)
+
+if(WIN32)
+    set_property(TARGET liblemon PROPERTY IMPORTED_LOCATION ${LEMON_INSTALL_DIR}lib/lemon.lib)
+endif()
+if(UNIX)
+    set_property(TARGET liblemon PROPERTY IMPORTED_LOCATION ${LEMON_INSTALL_DIR}lib/libemon.a)
+endif()
 #ExternalProject_Get_Property(lemon install_dir)
 
 # detect if x64
@@ -81,9 +91,9 @@ add_executable(GraphHarmonicMap
     source/GraphHarmonicMap.cpp
     source/Graph.cpp
 )
-set_property(TARGET GraphHarmonicMap PROPERTY CXX_STANDARD 14)
+set_property(TARGET GraphHarmonicMap PROPERTY CXX_STANDARD 11)
 set_property(TARGET GraphHarmonicMap PROPERTY CXX_STANDARD_REQUIRED ON)
 
-target_link_libraries(GraphHarmonicMap lemon)
+target_link_libraries(GraphHarmonicMap liblemon)
 
 install (TARGETS GraphHarmonicMap DESTINATION ${PROJECT_ROOT}/bin)

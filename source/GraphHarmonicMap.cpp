@@ -1,5 +1,5 @@
 #include <cstdlib>
-//#include <omp.h>
+#include <omp.h>
 #include <queue>
 #include <set>
 #include <ctime>
@@ -57,9 +57,9 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename, const string & cut
                 auto edge = graph->g.edgeFromId(id);
                 graph->edgeSign[edge] = sign;
                 vector<int> cut;
-                while (iss.good())
+                int vid = 0;
+                while (iss >> vid)
                 {
-                    iss >> vid;
                     cut.push_back(vid);
                 }
                 cuts[id] = cut;
@@ -574,13 +574,13 @@ int CGraphHarmonicMap::harmonicMap()
         }
         neis.push_back(nei);
     }
-    time_t start = clock();
+    time_t start = time(NULL);
     int k = 0;
     while (k < 3000)
     {
         double err = 0;
         //random_shuffle(vv.begin(), vv.end());
-#pragma omp parallel for
+        #pragma omp parallel for
         for (int i = 0; i < vv.size(); ++i)
         {
             double d = calculateBarycenter(vv[i], neis[i]);
@@ -591,8 +591,8 @@ int CGraphHarmonicMap::harmonicMap()
         if (err < EPS) break;
         ++k;
     }
-    time_t finish = clock();
-    cout << "elapsed time is " << (finish - start) / double(CLOCKS_PER_SEC) << endl;
+    time_t finish = time(NULL);
+    cout << "elapsed time is " << (finish - start) << "s" << endl;
 
     for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
     {
@@ -1360,8 +1360,18 @@ int test()
     return 0;
 }
 
+int showUsage()
+{
+    cout << "usage: GraphHarmonicMap [harmonic|decompose] meshfilename graphfilename cutfilename outfilename [--options]" << endl;
+    return 0;
+}
+
 int main(int argc, char * argv[])
 {
+    if (argc < 2)
+    {
+        return showUsage();
+    }
     string command(argv[1]);
     vector<int> ind;
     string meshfilename;
@@ -1383,10 +1393,9 @@ int main(int argc, char * argv[])
         }
     }
 
-    if (ind.size() < 3)
+    if (ind.size() < 4)
     {
-        cout << "usage: GraphHarmonicMap [harmonic|decompose] meshfilename graphfilename [cutfilename] [outfilename] [--options]" << endl;
-        return -1;
+        return showUsage();
     }
 
     meshfilename = string(argv[ind[0]]);
