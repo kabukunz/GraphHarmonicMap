@@ -1,0 +1,27 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "0.1.0",
+    "showOutput": "always",
+    "isShellCommand": true,
+    "tasks": [
+        {
+            "taskName": "make",
+            "command": "make",
+            "args": [],
+            "isBuildCommand": true,
+            "options": {
+                "cwd": "${workspaceRoot}/build"
+            }
+        },
+        {
+            "taskName": "install",
+            "command": "make",
+            "args": ["install"],
+            "isBuildCommand": true,
+            "options": {
+                "cwd": "${workspaceRoot}/build"
+            }
+        }
+    ]
+}
