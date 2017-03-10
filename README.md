@@ -49,5 +49,5 @@ or build "install" project in IDE, binary will be installed in ~/bin, where ~ is
 ```
 * visualize
 ```
-./bin/G3DOGL eight.harmonic.m -texturemap ./bin/check_128.jpg
+./bin/G3DOGL data/eight.harmonic.m -texturemap ./bin/check_128.jpg
 ```
