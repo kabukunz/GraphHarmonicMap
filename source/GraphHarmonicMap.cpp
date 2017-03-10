@@ -1,5 +1,5 @@
 #include <cstdlib>
-#include <omp.h>
+//#include <omp.h>
 #include <queue>
 #include <set>
 #include <ctime>
@@ -166,10 +166,10 @@ double CGraphHarmonicMap::distance(CTarget * x, CTarget * y)
     auto & ey = y->edge;
     double elx = graph->edgeLength[ex];
     double ely = graph->edgeLength[ey];
-    auto & ux = graph->g.u(ex);
-    auto & vx = graph->g.v(ex);
-    auto & uy = graph->g.u(ey);
-    auto & vy = graph->g.v(ey);
+    const auto & ux = graph->g.u(ex);
+    const auto & vx = graph->g.v(ex);
+    const auto & uy = graph->g.u(ey);
+    const auto & vy = graph->g.v(ey);
     SmartGraph::Node nx, ny;
     double dey = distance(x, ey, nx, ny);
     if (uy == vy) // y is a loop
