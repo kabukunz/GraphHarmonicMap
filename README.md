@@ -22,7 +22,7 @@ mkdir build
 cd build
 cmake ..
 ```
-You can also generator for certain toolchains, for example on maxOS:
+You can also generator for certain toolchains, for example on macOS:
 ```
 cmake .. -G XCode
 ```
@@ -30,7 +30,7 @@ cmake .. -G XCode
 ```
 make
 ```
-or open generated solution file with IDE (Visual Studio, XCode, etc..)
+or open generated solution file with IDE (Visual Studio, XCode, etc..) and build the solution
 
 if everything ok, then
 ```
