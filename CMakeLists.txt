@@ -15,10 +15,18 @@ endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 #  set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # endif()
 
-find_package(OpenMP)
-if (OPENMP_FOUND)
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+OPTION (USE_OpenMP "Use OpenMP" ON)
+if(USE_OpenMP)
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+        set(CMAKE_C_COMPILER clang-omp CACHE STRING "C compiler" FORCE)
+        set(CMAKE_CXX_COMPILER clang-omp++ CACHE STRING "C++ compiler" FORCE)
+    endif()
+
+    find_package(OpenMP)
+    if (OPENMP_FOUND)
+        set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+        set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    endif()
 endif()
 
 # set vc runtime library as /MT
@@ -73,6 +81,8 @@ add_executable(GraphHarmonicMap
     source/GraphHarmonicMap.cpp
     source/Graph.cpp
 )
+set_property(TARGET GraphHarmonicMap PROPERTY CXX_STANDARD 14)
+set_property(TARGET GraphHarmonicMap PROPERTY CXX_STANDARD_REQUIRED ON)
 
 target_link_libraries(GraphHarmonicMap lemon)
 
