@@ -18,6 +18,9 @@
     <ClInclude Include="..\..\source\Graph.h" />
     <ClInclude Include="..\..\source\GraphHarmonicMap.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\..\CMakeLists.txt" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{DF614A0B-0701-4762-B6A8-D54D9D6D90BB}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
