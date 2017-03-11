@@ -48,7 +48,7 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename, const string & cut
         {
             std::istringstream iss(line);
             string type;
-            int id, sign, vid;
+            int id, sign;
             iss >> type;
             if (type[0] == '#') continue;
             if (type == "Cut")
@@ -1286,10 +1286,6 @@ int CGraphHarmonicMap::output(string filename)
     mesh->write_m(filename.c_str());
     return 0;
 }
-
-
-#include "GraphHarmonicMap.h"
-#include <time.h>
 
 int GraphHarmonicMap(string meshfilename, string graphfilename, string cutfilename, string outfilename, string options)
 {
