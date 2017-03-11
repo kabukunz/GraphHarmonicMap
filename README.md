@@ -4,11 +4,11 @@ implement harmonic map from arbitrary surface to its pants decomposition graph
 ## Prerequisites
 * C++ standard: C++11, some of C++14
 * Compiler: 
-    * Windows: Visual Studio 2015+
-    * Mac: Clang/LLVM latest version
-    * Linux: gcc  latest version
+    * Visual Studio 2015+
+    * Clang/LLVM: 3.8+ (not recommended, clang/llvm shipped with Xcode does not support openmp by default)
+    * gcc: 6+
 * cmake: 3.0+
-* openmp: highly recommended
+* openmp: any version (highly recommended)
 
 ## Installation
 * clone source code

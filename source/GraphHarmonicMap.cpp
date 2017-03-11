@@ -1,8 +1,14 @@
 #include <cstdlib>
-#include <omp.h>
 #include <queue>
 #include <set>
 #include <ctime>
+
+#ifdef __GNUC__
+    #ifndef __clang__
+        #include <omp.h>
+    #endif
+#endif
+
 #include "GraphHarmonicMap.h"
 #include "parser/parser.h"
 #include "Eigen/Eigen"

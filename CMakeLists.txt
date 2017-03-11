@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.0)
 
+if(${APPLE})
+    set(CMAKE_C_COMPILER "gcc-6")
+    set(CMAKE_CXX_COMPILER "g++-6")
+endif()
+
 project(GraphHarmonicMap)
 set (GraphHarmonicMap_VERSION_MAJOR 1)
 set (GraphHarmonicMap_VERSION_MINOR 0)
@@ -17,10 +22,10 @@ endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
 OPTION (USE_OpenMP "Use OpenMP" ON)
 if(USE_OpenMP)
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-        set(CMAKE_C_COMPILER clang-omp CACHE STRING "C compiler" FORCE)
-        set(CMAKE_CXX_COMPILER clang-omp++ CACHE STRING "C++ compiler" FORCE)
-    endif()
+    #if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+        #set(CMAKE_C_COMPILER clang-3.8 CACHE STRING "C compiler" FORCE)
+        #set(CMAKE_CXX_COMPILER clang++-3.8 CACHE STRING "C++ compiler" FORCE)
+    #endif()
 
     find_package(OpenMP)
     if (OPENMP_FOUND)
@@ -46,7 +51,7 @@ if(${MSVC})
 endif()
 
 if(${CMAKE_COMPILER_IS_GNUCXX})
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 endif()
 
 include_directories(third-party/MeshLib/base)
@@ -54,16 +59,17 @@ include_directories(third-party/MeshLib/core)
 include_directories(third-party/eigen)
 #include_directories(third-party/lemon/include)
 
-set(LEMON_PATH "${PROJECT_ROOT}/third-party/lemon/")
-set(LEMON_INSTALL_DIR "${PROJECT_ROOT}/third-party/lemon/")
+set(LEMON_ROOT "${PROJECT_ROOT}/third-party/lemon/")
+set(LEMON_BUILD_DIR "${PROJECT_ROOT}/build/lemon/")
 include(ExternalProject)
 ExternalProject_Add(lemon
-    PREFIX "${LEMON_PATH}"
-    BINARY_DIR "${LEMON_PATH}/build"
-    STAMP_DIR  "${LEMON_PATH}/build"
-    SOURCE_DIR "${LEMON_PATH}"
-    INSTALL_DIR "${LEMON_INSTALL_DIR}"
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LEMON_INSTALL_DIR} -DBUILD_SHARED_LIBS=OFF 
+    PREFIX "${LEMON_ROOT}"
+    BINARY_DIR "${LEMON_BUILD_DIR}"
+    STAMP_DIR  "${LEMON_BUILD_DIR}"
+    SOURCE_DIR "${LEMON_ROOT}"
+    INSTALL_DIR "${LEMON_ROOT}"
+    CMAKE_CACHE_ARGS "-DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}" "-DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}"
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LEMON_ROOT} -DBUILD_SHARED_LIBS=OFF
         -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
         -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
         -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
@@ -75,10 +81,10 @@ add_library(liblemon STATIC IMPORTED)
 add_dependencies(liblemon lemon)
 
 if(WIN32)
-    set_property(TARGET liblemon PROPERTY IMPORTED_LOCATION ${LEMON_INSTALL_DIR}lib/lemon.lib)
+    set_property(TARGET liblemon PROPERTY IMPORTED_LOCATION ${LEMON_ROOT}/lib/lemon.lib)
 endif()
 if(UNIX)
-    set_property(TARGET liblemon PROPERTY IMPORTED_LOCATION ${LEMON_INSTALL_DIR}lib/libemon.a)
+    set_property(TARGET liblemon PROPERTY IMPORTED_LOCATION ${LEMON_ROOT}/lib/libemon.a)
 endif()
 #ExternalProject_Get_Property(lemon install_dir)
 
@@ -91,7 +97,7 @@ add_executable(GraphHarmonicMap
     source/GraphHarmonicMap.cpp
     source/Graph.cpp
 )
-set_property(TARGET GraphHarmonicMap PROPERTY CXX_STANDARD 11)
+set_property(TARGET GraphHarmonicMap PROPERTY CXX_STANDARD 14)
 set_property(TARGET GraphHarmonicMap PROPERTY CXX_STANDARD_REQUIRED ON)
 
 target_link_libraries(GraphHarmonicMap liblemon)
