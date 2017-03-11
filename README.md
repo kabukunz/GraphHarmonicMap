@@ -26,6 +26,10 @@ You can also generator for certain toolchains, for example on macOS:
 ```
 cmake .. -G XCode
 ```
+or generate with x64 toolchains (on Windows default is x86, which is not recommended by me)
+```
+cmake .. -G "Visual Studio 14 2015 Win64"
+```
 * if cmake goes well, then make 
 ```
 make
