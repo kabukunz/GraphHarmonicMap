@@ -26,7 +26,7 @@ public:
     SmartGraph g;
     SmartGraph::EdgeMap<double> edgeLength;
     SmartGraph::EdgeMap<int> edgeSign;
-    SmartGraph::NodeMap<double> dist;
+    SmartGraph::NodeMap<int> nodeValence;
 
 private:
     map<int, SmartGraph::Node> nodeMap;

@@ -1,7 +1,7 @@
 #include "Graph.h"
 #include <lemon/dijkstra.h>
 
-CGraph::CGraph() : edgeLength(g), edgeSign(g), dist(g)
+CGraph::CGraph() : edgeLength(g), edgeSign(g), nodeValence(g)
 {
 }
 
@@ -36,8 +36,8 @@ int CGraph::read(string filename)
         {
             iss >> id >> x >> y;
             auto n = g.addNode();
-            //nodePosition[n] = CPoint2(x, y);
             nodeMap[id] = n;
+            nodeValence[n] = 0;
         }
         if (type == "Arc")
         {
@@ -45,6 +45,8 @@ int CGraph::read(string filename)
             iss >> id >> i >> j >> l;
             auto arc = g.addEdge(nodeMap[i], nodeMap[j]);
             edgeLength[arc] = l;
+            nodeValence[nodeMap[i]] += 1;
+            nodeValence[nodeMap[j]] += 1;
         }
     }
     return 0;
@@ -73,6 +75,7 @@ double CGraph::distance(const SmartGraph::Node & n1, const SmartGraph::Node & n2
 
 void CGraph::calculateNodeDistance()
 {
+    SmartGraph::NodeMap<double> dist(g);
     auto dij = dijkstra(g, edgeLength).distMap(dist);
     for (SmartGraph::NodeIt n1(g); n1 != INVALID; ++n1)
     {

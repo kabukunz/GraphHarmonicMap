@@ -3,10 +3,8 @@
 #include <set>
 #include <ctime>
 
-#ifdef __GNUC__
-    #ifndef __clang__
-        #include <omp.h>
-    #endif
+#ifndef __clang__
+    #include <omp.h>
 #endif
 
 #include "GraphHarmonicMap.h"
@@ -84,6 +82,29 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename, const string & cut
         exit(-1);
         return -1;
     }
+
+    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+    {
+        CVertex * v = *vit;
+        v->prop("fixed") = false;
+    }
+
+    for (auto c : cuts)
+    {
+        int id = c.first;
+        auto cut = c.second;
+        auto e = graph->g.edgeFromId(id);
+        double el = graph->edgeLength[e];
+        auto u = graph->g.u(e);
+        auto v = graph->g.v(e);
+        bool isfixed = graph->nodeValence[u] == 1 || graph->nodeValence[v] == 1;
+        for (auto i : cut)
+        {
+            CVertex * v = mesh->idVertex(i);
+            v->prop("fixed") = isfixed;
+        }
+    }
+    
 
     return 0;
 }
@@ -303,6 +324,9 @@ double CGraphHarmonicMap::distance(CTarget * x, SmartGraph::Node n)
 
 double CGraphHarmonicMap::calculateBarycenter(CVertex * v, vector<CVertex*> & nei)
 {
+    bool isfixed = v->prop("fixed");
+    if (isfixed) return 0.0;
+
     //vector<CVertex*> nei;
     vector<CTarget*> neit;
     vector<double> ew;
@@ -582,7 +606,7 @@ int CGraphHarmonicMap::harmonicMap()
     }
     time_t start = time(NULL);
     int k = 0;
-    while (k < 3000)
+    while (k < 1000)
     {
         double err = 0;
         //random_shuffle(vv.begin(), vv.end());
@@ -763,41 +787,76 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
     }
     else
     {
+        auto u0 = graph->g.u(e0);
+        auto v0 = graph->g.v(e0);
+        if(u0 != node && v0 != node)
+        {
+            cerr << "edge does not connect to node, graph configuration is not correct" << endl;
+            return -1;
+        }
+        SmartGraph::Node n0 = u0 == node ? v0 : u0;
+        
         int e0id = graph->g.id(e0);
         auto & cut0 = cuts[e0id];
         double l0 = graph->edgeLength[e0];
+        bool on0 = graph->nodeValence[n0] == 1;
         for (auto i : cut0)
         {
             CVertex * v = mesh->idVertex(i);
-            v->prop("x") = -l0 / 2.0;
+            v->prop("x") = on0 ? -l0 : -l0 / 2.0;
             v->prop("y") = double(0.0);
             v->prop("cut2") = true;
             v->touched() = true;
+            v->prop("fixed") = on0;
         }
+
+        auto u1 = graph->g.u(e1);
+        auto v1 = graph->g.v(e1);
+        if (u1 != node && v1 != node)
+        {
+            cerr << "edge does not connect to node, graph configuration is not correct" << endl;
+            return -1;
+        }
+        SmartGraph::Node n1 = u1 == node ? v1 : u1;
 
         int e1id = graph->g.id(e1);
         auto & cut1 = cuts[e1id];
         double l1 = graph->edgeLength[e1];
+        bool on1 = graph->nodeValence[n1] == 1;
         for (auto i : cut1)
         {
             CVertex * v = mesh->idVertex(i);
             v->prop("x") = double(0.0);
-            v->prop("y") = -l1 / 2.0;
+            v->prop("y") = on1 ? -l1 : -l1 / 2.0;
             v->prop("cut2") = true;
             v->touched() = true;
+            v->prop("fixed") = on1;
         }
     }
+
+    auto u2 = graph->g.u(e2);
+    auto v2 = graph->g.v(e2);
+
+    if (u2 != node && v2 != node)
+    {
+        cerr << "edge does not connect to node, graph configuration is not correct" << endl;
+        return -1;
+    }
+
+    SmartGraph::Node n2 = u2 == node ? v2 : u2;
 
     int eid = graph->g.id(e2);
     double length = graph->edgeLength[e2];
     auto & cut = cuts[eid];
+    bool on2 = graph->nodeValence[n2] == 1;
     for (auto i : cut)
     {
         CVertex * v = mesh->idVertex(i);
-        v->prop("x") = length / 2.0;
-        v->prop("y") = length / 2.0;
+        v->prop("x") = on2 ? length : length / 2.0;
+        v->prop("y") = on2 ? length : length / 2.0;
         v->prop("cut2") = true;
         v->touched() = true;
+        v->prop("fixed") = on2;
     }
 
     // compute harmonic map
@@ -915,6 +974,32 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
         v->prop("target") = t;
     }
 
+    for (auto c : cuts)
+    {
+        int id = c.first;
+        auto cut = c.second;
+        auto e = graph->g.edgeFromId(id);
+        double el = graph->edgeLength[e];
+        auto u = graph->g.u(e);
+        auto v = graph->g.v(e);
+        SmartGraph::Node n = u == node ? v : u;
+        for (auto i : cut)
+        {
+            CVertex * v = mesh->idVertex(i);
+            bool isfixed = v->prop("fixed");
+            if (isfixed)
+            {
+                void * t = v->prop("target");
+                CTarget * vt = (CTarget*)t;
+                vt->edge = e;
+                vt->node = n;
+                vt->length = 0;
+                v->prop("target") = vt;
+            }
+            
+        }
+    }
+
     return 0;
 }
 
@@ -1019,14 +1104,14 @@ int CGraphHarmonicMap::decompose()
     {
         CVertex * v = *vit;
         bool critical = false;
-
+        bool isfixed = v->prop("fixed");
         void * t = v->prop("target");
         CTarget * vt = (CTarget*)t;
         SmartGraph::Edge e = vt->edge;
         double el = graph->edgeLength[e];
         double l = vt->length;
         if (l > el*0.75) l = el - l;
-        if (l <= el*EPS)
+        if (!isfixed && l <= el*EPS)
         {
             critical = true;
         }
@@ -1086,24 +1171,36 @@ int CGraphHarmonicMap::decompose()
         set<int> eids;
         if (!c0) {
             void * t0 = v0->prop("target");
-            CTarget * vt0 = (CTarget*)t0;
-            SmartGraph::Edge e0 = vt0->edge;
-            eids.insert(graph->g.id(e0));
-            vs = v0;
+            bool f0 = v0->prop("fixed");
+            if (!f0)
+            {
+                CTarget * vt0 = (CTarget*)t0;
+                SmartGraph::Edge e0 = vt0->edge;
+                eids.insert(graph->g.id(e0));
+                vs = v0;
+            }
         }
         if (!c1) {
             void * t1 = v1->prop("target");
-            CTarget * vt1 = (CTarget*)t1;
-            SmartGraph::Edge e1 = vt1->edge;
-            eids.insert(graph->g.id(e1));
-            vs = v1;
+            bool f1 = v1->prop("fixed");
+            if (!f1)
+            {
+                CTarget * vt1 = (CTarget*)t1;
+                SmartGraph::Edge e1 = vt1->edge;
+                eids.insert(graph->g.id(e1));
+                vs = v1;
+            }
         }
         if (!c2) {
             void * t2 = v2->prop("target");
-            CTarget * vt2 = (CTarget*)t2;
-            SmartGraph::Edge e2 = vt2->edge;
-            eids.insert(graph->g.id(e2));
-            vs = v2;
+            bool f2 = v2->prop("fixed");
+            if (!f2)
+            {
+                CTarget * vt2 = (CTarget*)t2;
+                SmartGraph::Edge e2 = vt2->edge;
+                eids.insert(graph->g.id(e2));
+                vs = v2;
+            }
         }
         if (eids.size() != 1)
         {
@@ -1174,6 +1271,14 @@ int CGraphHarmonicMap::decompose()
 
 bool CGraphHarmonicMap::hasCriticalPoint(CVertex * v0, CVertex * v1, CVertex * v2)
 {
+    bool f0 = v0->prop("fixed");
+    bool f1 = v1->prop("fixed");
+    if (f0 || f1) return false;
+    if (v2)
+    {
+        bool f2 = v2->prop("fixed");
+        if (f2) return false;
+    }
     // if any vertex is critical, then this face has no critical point inside;
     // edge has critical point iff both vertices are critical, that case has been processed
     bool critical0 = v0->prop("critical");
@@ -1333,6 +1438,7 @@ int Decompose(string meshfilename, string graphfilename, string cutfilename, str
 
     return 0;
 }
+
 
 int test()
 {
