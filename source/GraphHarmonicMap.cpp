@@ -4,12 +4,14 @@
 #include <ctime>
 
 #ifndef __clang__
-    #include <omp.h>
+#include <omp.h>
 #endif
 
 #include "GraphHarmonicMap.h"
 #include "parser/parser.h"
 #include "Eigen/Eigen"
+
+const double PI = 3.141592653589793;
 
 CGraphHarmonicMap::CGraphHarmonicMap()
 {
@@ -83,12 +85,6 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename, const string & cut
         return -1;
     }
 
-    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
-    {
-        CVertex * v = *vit;
-        v->prop("fixed") = false;
-    }
-
     for (auto c : cuts)
     {
         int id = c.first;
@@ -98,13 +94,15 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename, const string & cut
         auto u = graph->g.u(e);
         auto v = graph->g.v(e);
         bool isfixed = graph->nodeValence[u] == 1 || graph->nodeValence[v] == 1;
-        for (auto i : cut)
+        if (isfixed)
         {
-            CVertex * v = mesh->idVertex(i);
-            v->prop("fixed") = isfixed;
+            for (auto i : cut)
+            {
+                CVertex * v = mesh->idVertex(i);
+                v->prop("fixed") = true;
+            }
         }
     }
-    
 
     return 0;
 }
@@ -151,6 +149,210 @@ int CGraphHarmonicMap::calculateEdgeWeight()
         he->edge()->prop("weight") = 0.5 / tan(theta1) + 0.5 / tan(theta2);
         he_dual->touched() = true;
     }
+    return 0;
+}
+
+int CGraphHarmonicMap::runRicciFlow()
+{
+    int nv = mesh->numVertices();
+    int ne = mesh->numEdges();
+    int nf = mesh->numFaces();
+
+    typedef Eigen::ArrayXi Index;
+    typedef Eigen::ArrayXXi IndexX;
+    typedef Eigen::ArrayXd Array;
+    typedef Eigen::ArrayXXd ArrayX;
+
+    auto cosine_law = [&](Array & li, Array & lj, Array & lk) {return acos((lj*lj + lk*lk - li*li) / (2 * lj*lk)); };
+
+    vector<CVertex*> vv;
+    vv.reserve(nv);
+    int k = 0;
+    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+    {
+        CVertex * v = *vit;
+        v->id() = k++;
+        vv.push_back(v);
+    }
+
+    IndexX face = IndexX::Zero(nf, 3);
+    k = 0;
+    for (MeshFaceIterator fit(mesh); !fit.end(); ++fit)
+    {
+        CFace * f = *fit;
+        f->id() = k++;
+        int i = 0;
+        for (FaceVertexIterator fvit(f); !fvit.end(); ++fvit)
+        {
+            CVertex * v = *fvit;
+            face(f->id(), i++) = v->id();
+        }
+    }
+    IndexX edge = IndexX::Zero(ne, 2);
+    IndexX eif = -IndexX::Ones(ne, 2);
+    k = 0;
+    for (MeshEdgeIterator eit(mesh); !eit.end(); ++eit)
+    {
+        CEdge * e = *eit;
+        int id = k++;
+        e->id() = id;
+        CVertex * v1 = mesh->edgeVertex1(e);
+        CVertex * v2 = mesh->edgeVertex2(e);
+        edge(id, 0) = v1->id();
+        edge(id, 1) = v2->id();
+        CFace * f1 = mesh->edgeFace1(e);
+        CFace * f2 = mesh->edgeFace2(e);
+        if (f1) eif(id, 0) = f1->id();
+        if (f2) eif(id, 1) = f2->id();
+    }
+
+    Array u = Array::Zero(nv);
+    Array el = Array::Zero(ne);
+    Array ew = Array::Zero(ne);
+    Array vkt = Array::Zero(nv);
+    Array vk = Array::Zero(nv);
+
+    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+    {
+        CVertex * v = *vit;
+        int id = v->id();
+        bool critical = v->hasProp("critical") && v->prop("critical");
+        bool fixed = v->hasProp("fixed") && v->prop("fixed");
+        if (critical)
+        {
+            cout << "critical point: " << v->id() << endl;
+            vkt(id) = -PI;
+        }
+        else if (fixed && !v->boundary())
+        {
+            cout << "singular point: " << v->id() << endl;
+            vkt(id) = 2 * PI;
+        }
+    }
+    boundary = new CBoundary(mesh);
+    vector<CLoop*> & loops = boundary->loops();
+    Array bk = 2 * PI * Array::Ones(nv);
+    for (auto loop : loops)
+    {
+        auto hes = loop->halfedges();
+        for (auto it = hes.begin(); it != hes.end(); ++it)
+        {
+            CVertex * v = (*it)->target();
+            bk[v->id()] = PI;
+        }
+    }
+
+    k = 0;
+    while (k++ < 20)
+    {
+        // calculate vertex curvature
+        for (int i = 0; i < ne; ++i)
+        {
+            el(i) = exp(u(edge(i, 0))) + exp(u(edge(i, 1)));
+        }
+        ArrayX r = ArrayX::Zero(nf, 3);
+        ArrayX ca = ArrayX::Zero(nf, 3);
+        for (int i = 0; i < nf; ++i)
+        {
+            r(i, 0) = exp(u(face(i, 0)));
+            r(i, 1) = exp(u(face(i, 1)));
+            r(i, 2) = exp(u(face(i, 2)));
+        }
+        Array l0 = r.col(1) + r.col(2);
+        Array l1 = r.col(2) + r.col(0);
+        Array l2 = r.col(0) + r.col(1);
+        ca.col(0) = cosine_law(l0, l1, l2);
+        ca.col(1) = cosine_law(l1, l2, l0);
+        ca.col(2) = cosine_law(l2, l0, l1);
+        vk = bk;
+        for (int i = 0; i < nf; ++i)
+        {
+            int f0 = face(i, 0);
+            int f1 = face(i, 1);
+            int f2 = face(i, 2);
+            vk(f0) -= ca(i, 0);
+            vk(f1) -= ca(i, 1);
+            vk(f2) -= ca(i, 2);
+        }
+
+        double err = abs(vk - vkt).maxCoeff();
+        cout << "current error is " << err << endl;
+        if (err < EPS || isnan(err)) break;
+
+        // calculate edge weight
+        Array w = sqrt(r.col(0)*r.col(1)*r.col(2) / (r.col(0) + r.col(1) + r.col(2)));
+        ew.setZero();
+        for (int i = 0; i < ne; ++i)
+        {
+            if (eif(i, 0) >= 0) ew(i) += w(eif(i, 0)) / el(i);
+            if (eif(i, 1) >= 0) ew(i) += w(eif(i, 1)) / el(i);
+        }
+
+        // Newton's method
+        Eigen::VectorXd b = vkt - vk;
+        typedef Eigen::Triplet<double> T;
+        vector<T> triplets;
+        triplets.reserve(ne * 2 + nv);
+        Eigen::SparseMatrix<double> A(nv, nv);
+        Eigen::VectorXd x;
+        for (int i = 0; i < ne; ++i)
+        {
+            int v0 = edge(i, 0);
+            int v1 = edge(i, 1);
+            triplets.push_back(T(v0, v1, -ew(i)));
+            triplets.push_back(T(v1, v0, -ew(i)));
+            triplets.push_back(T(v0, v0, ew(i)));
+            triplets.push_back(T(v1, v1, ew(i)));
+        }
+        triplets.push_back(T(0, 0, 1));
+        A.setFromTriplets(triplets.begin(), triplets.end());
+        A.finalize();
+
+        Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
+        solver.compute(A);
+        if (solver.info() != Eigen::Success)
+        {
+            cerr << "waring: Eigen decomposition failed" << endl;
+        }
+        x = solver.solve(b);
+        Array xa = x.array();
+        u += xa - x.mean();
+    }
+    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+    {
+        CVertex * v = *vit;
+        ostringstream oss;
+        oss << " u=(" << u[v->id()] << ")";
+        v->string() += oss.str();
+    }
+    for (MeshEdgeIterator eit(mesh); !eit.end(); ++eit)
+    {
+        CEdge * e = *eit;
+        e->length() = el(e->id());
+        ostringstream oss;
+        oss << "length=(" << e->length() << ")";
+        e->string() = oss.str();
+    }
+
+    k = 1;
+    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+    {
+        CVertex * v = *vit;
+        v->id() = k++;
+    }
+    k = 1;
+    for (MeshFaceIterator fit(mesh); !fit.end(); ++fit)
+    {
+        CFace * f = *fit;
+        f->id() = k++;
+    }
+    k = 1;
+    for (MeshEdgeIterator eit(mesh); !eit.end(); ++eit)
+    {
+        CEdge * e = *eit;
+        e->id() = k++;
+    }
+
     return 0;
 }
 
@@ -324,7 +526,7 @@ double CGraphHarmonicMap::distance(CTarget * x, SmartGraph::Node n)
 
 double CGraphHarmonicMap::calculateBarycenter(CVertex * v, vector<CVertex*> & nei)
 {
-    bool isfixed = v->prop("fixed");
+    bool isfixed = v->hasProp("fixed") && v->prop("fixed");
     if (isfixed) return 0.0;
 
     //vector<CVertex*> nei;
@@ -606,7 +808,7 @@ int CGraphHarmonicMap::harmonicMap()
     }
     time_t start = time(NULL);
     int k = 0;
-    while (k < 1000)
+    while (k < 2000)
     {
         double err = 0;
         //random_shuffle(vv.begin(), vv.end());
@@ -789,13 +991,13 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
     {
         auto u0 = graph->g.u(e0);
         auto v0 = graph->g.v(e0);
-        if(u0 != node && v0 != node)
+        if (u0 != node && v0 != node)
         {
             cerr << "edge does not connect to node, graph configuration is not correct" << endl;
             return -1;
         }
         SmartGraph::Node n0 = u0 == node ? v0 : u0;
-        
+
         int e0id = graph->g.id(e0);
         auto & cut0 = cuts[e0id];
         double l0 = graph->edgeLength[e0];
@@ -807,7 +1009,6 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
             v->prop("y") = double(0.0);
             v->prop("cut2") = true;
             v->touched() = true;
-            v->prop("fixed") = on0;
         }
 
         auto u1 = graph->g.u(e1);
@@ -830,7 +1031,6 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
             v->prop("y") = on1 ? -l1 : -l1 / 2.0;
             v->prop("cut2") = true;
             v->touched() = true;
-            v->prop("fixed") = on1;
         }
     }
 
@@ -856,7 +1056,6 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
         v->prop("y") = on2 ? length : length / 2.0;
         v->prop("cut2") = true;
         v->touched() = true;
-        v->prop("fixed") = on2;
     }
 
     // compute harmonic map
@@ -986,7 +1185,7 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
         for (auto i : cut)
         {
             CVertex * v = mesh->idVertex(i);
-            bool isfixed = v->prop("fixed");
+            bool isfixed = v->hasProp("fixed") && v->prop("fixed");
             if (isfixed)
             {
                 void * t = v->prop("target");
@@ -996,7 +1195,7 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
                 vt->length = 0;
                 v->prop("target") = vt;
             }
-            
+
         }
     }
 
@@ -1100,11 +1299,23 @@ int CGraphHarmonicMap::traceCriticalTrajectory()
 
 int CGraphHarmonicMap::decompose()
 {
+    int k = 0;
+    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
+    {
+        CVertex * v = *vit;
+        v->id() = k++;
+    }
+    k = 0;
+    for (MeshFaceIterator fit(mesh); !fit.end(); ++fit)
+    {
+        CFace * f = *fit;
+        f->id() = k++;
+    }
     for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
     {
         CVertex * v = *vit;
         bool critical = false;
-        bool isfixed = v->prop("fixed");
+        bool isfixed = v->hasProp("fixed") && v->prop("fixed");
         void * t = v->prop("target");
         CTarget * vt = (CTarget*)t;
         SmartGraph::Edge e = vt->edge;
@@ -1113,45 +1324,39 @@ int CGraphHarmonicMap::decompose()
         if (l > el*0.75) l = el - l;
         if (!isfixed && l <= el*EPS)
         {
-            critical = true;
+            cout << "critical vertex: " << v->id() << endl;
+            v->prop("critical2") = true;
         }
-        v->prop("critical") = critical;
     }
 
     dmesh = new CDynamicMesh(mesh);
     for (MeshFaceIterator fit(mesh); !fit.end(); ++fit)
     {
         CFace * f = *fit;
-        CHalfEdge * he = f->halfedge();
-        CVertex * v0 = he->source();
-        CVertex * v1 = he->target();
-        CVertex * v2 = he->he_next()->target();
-
-        if (hasCriticalPoint(v0, v1, v2))
+        if (hasCriticalPoint(f))
         {
-            CVertex * v3 = dmesh->splitFace(f);
+            CVertex * v3 = locateCriticalPoint(f);
             v3->prop("critical") = true;
-            v3->prop("target") = (void*)NULL;
-            v3->point() = locateCriticalPoint(v0, v1, v2);
+            v3->prop("critical2") = true;
+            v3->prop("fixed") = true;
+            cout << "critical point inside triangle: " << v3->id() << endl;
         }
     }
 
     for (MeshEdgeIterator eit(mesh); !eit.end(); ++eit)
     {
         CEdge * e = *eit;
-        CVertex * v0 = e->halfedge(0)->source();
-        CVertex * v1 = e->halfedge(0)->target();
-        if (hasCriticalPoint(v0, v1))
+        if (hasCriticalPoint(e))
         {
-            CVertex *v2 = dmesh->splitEdge(e);
-            v2->prop("critical") = true;
-            v2->prop("target") = (void*)NULL;
-            v2->point() = locateCriticalPoint(v0, v1);
+            CVertex *v2 = locateCriticalPoint(e);
+            v2->prop("critical2") = true;
         }
     }
 
+    mesh = dmesh;
+
     // label face
-    for (MeshFaceIterator fit(dmesh); !fit.end(); ++fit)
+    for (MeshFaceIterator fit(mesh); !fit.end(); ++fit)
     {
         CFace * f = *fit;
         CHalfEdge * he = f->halfedge();
@@ -1160,18 +1365,35 @@ int CGraphHarmonicMap::decompose()
         CVertex * v2 = he->he_next()->target();
         CVertex * vs;
         // v0,v1,v2 must have same edge id or been critical
-        bool c0 = v0->prop("critical");
-        bool c1 = v1->prop("critical");
-        bool c2 = v2->prop("critical");
+        bool c0 = v0->hasProp("critical2") && v0->prop("critical2");
+        bool c1 = v1->hasProp("critical2") && v1->prop("critical2");
+        bool c2 = v2->hasProp("critical2") && v2->prop("critical2");
+        bool ct0 = v0->hasProp("target");
+        bool ct1 = v1->hasProp("target");
+        bool ct2 = v2->hasProp("target");
         if (c0 && c1 && c2)
         {
-            cout << "face can't have 3 critical vertices" << endl;
-            exit(-1);
+            c0 = ct0;
+            c1 = ct1;
+            c2 = ct2;
         }
+        else
+        {
+            c0 = !c0 && ct0;
+            c1 = !c1 && ct1;
+            c2 = !c2 && ct2;
+        }
+        /*if (c0 && c1 && c2)
+        {
+            cout << "face can't have 3 critical vertices" << endl;
+            cout << "face " << f->id() << " is critical: " << hasCriticalPoint(f) << endl;
+            exit(-1);
+        }*/
+
         set<int> eids;
-        if (!c0) {
+        if (c0) {
             void * t0 = v0->prop("target");
-            bool f0 = v0->prop("fixed");
+            bool f0 = v0->hasProp("fixed") && v0->prop("fixed");
             if (!f0)
             {
                 CTarget * vt0 = (CTarget*)t0;
@@ -1180,9 +1402,9 @@ int CGraphHarmonicMap::decompose()
                 vs = v0;
             }
         }
-        if (!c1) {
+        if (c1) {
             void * t1 = v1->prop("target");
-            bool f1 = v1->prop("fixed");
+            bool f1 = v1->hasProp("fixed") && v1->prop("fixed");
             if (!f1)
             {
                 CTarget * vt1 = (CTarget*)t1;
@@ -1191,9 +1413,9 @@ int CGraphHarmonicMap::decompose()
                 vs = v1;
             }
         }
-        if (!c2) {
+        if (c2) {
             void * t2 = v2->prop("target");
-            bool f2 = v2->prop("fixed");
+            bool f2 = v2->hasProp("fixed") && v2->prop("fixed");
             if (!f2)
             {
                 CTarget * vt2 = (CTarget*)t2;
@@ -1202,194 +1424,227 @@ int CGraphHarmonicMap::decompose()
                 vs = v2;
             }
         }
+        int id = -1;
         if (eids.size() != 1)
         {
             cerr << "face not been splitted: " << f->id() << endl;
             exit(-1);
         }
-        int id = *eids.begin();
+        else if (eids.size() == 1)
+        {
+            id = *eids.begin();
+        }
         ostringstream oss;
         oss << "e=(" << id << ")";
         oss << " uv=(";
 
-        CTarget * vst;
-        for (int i = 0; i < 3; ++i)
-        {
-            CVertex * v = he->target();
-            bool c = v->prop("critical");
-            void * t = v->prop("target");
-            if (!c) vst = (CTarget*)t;
-            he = he->he_next();
-        }
+        void * t = vs->prop("target");
+        CTarget * vst = (CTarget*)t;
+
         if (!vst)
         {
-            cerr << "face has 3 critical vertex" << endl;
+            cout << "face " << f->id() << "has 3 critical vertex" << endl;
+            exit(-1);
         }
-        SmartGraph::Edge es = vst->edge;
-        int sign = graph->edgeSign[es];
-        double length = graph->edgeLength[es];
-        for (int i = 0; i < 3; ++i)
+        else
         {
-            CVertex * v = he->target();
-            bool c = v->prop("critical");
-            void * t = v->prop("target");
-            CTarget * vt = (CTarget*)t;
-            double x = 0.0;
-            if (c)
+            SmartGraph::Edge es = vst->edge;
+            int sign = graph->edgeSign[es];
+            double el = graph->edgeLength[es];
+            double x[3] = { 0,0,0 };
+            bool critical[3];
+            for (int i = 0; i < 3; ++i)
             {
-                if (vst->length > length / 2.0)
+                CVertex * v = he->target();
+                bool isCritical = v->hasProp("critical2") && v->prop("critical2");
+                if (!isCritical)
                 {
-                    x = length * sign;
+                    void * t = v->prop("target");
+                    CTarget * vt = (CTarget*)t;
+                    SmartGraph::Edge e = vt->edge;
+                    if (e != es)
+                    {
+                        cout << "e != es" << endl;
+                    }
+                    x[i] = vt->length;
+                    critical[i] = false;
                 }
+                else
+                {
+                    critical[i] = true;
+                }
+                he = he->he_next();
             }
-            else
+            if (max(max(x[0], x[1]), x[2]) > el / 2.0)
             {
-                SmartGraph::Edge e = vt->edge;
-                int sign = graph->edgeSign[e];
-                x = vt->length * sign;
+                if (critical[0]) x[0] = el;
+                if (critical[1]) x[1] = el;
+                if (critical[2]) x[2] = el;
             }
-            oss << x << " 0.43 ";
-            he = he->he_next();
+            if (fabs(max(max(x[0], x[1]), x[2]) - min(min(x[0], x[1]), x[2])) > el / 2.0)
+            {
+                cout << x[0] << " " << x[1] << " " << x[2] << endl;
+            }
+            x[0] *= sign;
+            x[1] *= sign;
+            x[2] *= sign;
+            oss << x[0] << " 0.43 " << x[1] << " 0.43 " << x[2] << " 0.43";
         }
         oss << ")";
         f->string() = oss.str();
     }
 
-    for (MeshVertexIterator vit(dmesh); !vit.end(); ++vit)
+    for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
     {
         CVertex * v = *vit;
-        bool c = v->prop("critical");
+        bool c = v->hasProp("critical2") && v->prop("critical2");
         if (c)
         {
             v->string() = "uv=(0 0.43) target=(-1 -1 0)";
         }
     }
 
-    mesh = dmesh;
+    cout << "calculating flat metric" << endl;
+    runRicciFlow();
+
     return 0;
 }
 
-bool CGraphHarmonicMap::hasCriticalPoint(CVertex * v0, CVertex * v1, CVertex * v2)
+bool CGraphHarmonicMap::hasCriticalPoint(CFace * f)
 {
-    bool f0 = v0->prop("fixed");
-    bool f1 = v1->prop("fixed");
-    if (f0 || f1) return false;
-    if (v2)
-    {
-        bool f2 = v2->prop("fixed");
-        if (f2) return false;
-    }
-    // if any vertex is critical, then this face has no critical point inside;
-    // edge has critical point iff both vertices are critical, that case has been processed
-    bool critical0 = v0->prop("critical");
-    bool critical1 = v1->prop("critical");
-    if (v2 == NULL)
-    {
-        if (critical0 || critical1) return false;
-    }
-    else
-    {
-        bool critical2 = v2->prop("critical");
-        if (critical0 || critical1 || critical2) return false;
-    }
+    CHalfEdge * he = f->halfedge();
+    CVertex * v0 = he->source();
+    CVertex * v1 = he->target();
+    CVertex * v2 = he->he_next()->target();
 
+    CEdge * e0 = he->edge();
+    CEdge * e1 = he->he_next()->edge();
+    CEdge * e2 = he->he_prev()->edge();
+    return hasCriticalPoint(e0) && hasCriticalPoint(e1) && hasCriticalPoint(e2);
+}
 
-    if (v2 == NULL) // edge case
-    {
-        void * t0 = v0->prop("target");
-        void * t1 = v1->prop("target");
-        CTarget * vt0 = (CTarget*)t0;
-        CTarget * vt1 = (CTarget*)t1;
-        SmartGraph::Edge e0 = vt0->edge;
-        SmartGraph::Edge e1 = vt1->edge;
-        if (e0 != e1) return true;
-
-        // e0 == e1
-        auto u = graph->g.u(e0);
-        auto v = graph->g.v(e0);
-        if (u != v) return false;// not a loop
-
-        // e0 == e1 is a loop
-        double el = graph->edgeLength[e0];
-        double l0 = vt0->length;
-        double l1 = vt1->length;
-
-        if (fabs(l0 - l1) > el / 2.0) return true;
-        else return false;
-    }
-    else // face case
-    {
-        void * t0 = v0->prop("target");
-        void * t1 = v1->prop("target");
-        void * t2 = v2->prop("target");
-        CTarget * vt0 = (CTarget*)t0;
-        CTarget * vt1 = (CTarget*)t1;
-        CTarget * vt2 = (CTarget*)t2;
-        SmartGraph::Edge e0 = vt0->edge;
-        SmartGraph::Edge e1 = vt1->edge;
-        SmartGraph::Edge e2 = vt2->edge;
-
-        if (e0 != e1 && e1 != e2 && e2 != e0) return true;
-        if (e0 == e1 && e1 == e2) return false;
-
-        if (e0 == e1 && e1 != e2) return hasCriticalPoint(v0, v1);
-        if (e1 == e2 && e2 != e0) return hasCriticalPoint(v1, v2);
-        if (e2 == e0 && e0 != e1) return hasCriticalPoint(v2, v0);
-    }
+bool CGraphHarmonicMap::hasCriticalPoint(CVertex * v1, CVertex * v2)
+{
+    CEdge * e = mesh->vertexEdge(v1, v2);
+    if (e) return hasCriticalPoint(e);
     return false;
 }
 
-CPoint CGraphHarmonicMap::locateCriticalPoint(CVertex * v0, CVertex * v1, CVertex * v2)
+bool CGraphHarmonicMap::hasCriticalPoint(CEdge * e)
 {
-    if (v2 == NULL) // ciritical point on edge
+    CVertex * v0 = mesh->edgeVertex1(e);
+    CVertex * v1 = mesh->edgeVertex2(e);
+
+    bool f0 = v0->hasProp("fixed") && v0->prop("fixed");
+    bool f1 = v1->hasProp("fixed") && v1->prop("fixed");
+    if (f0 || f1) return false;
+
+    // if any vertex is critical, then this face has no critical point inside;
+    // edge has critical point iff both vertices are critical, that case has been processed
+    bool critical0 = v0->hasProp("critical2") && v0->prop("critical2");
+    bool critical1 = v1->hasProp("critical2") && v1->prop("critical2");
+    if (critical0 || critical1) return true;
+
+    void * t0 = v0->prop("target");
+    void * t1 = v1->prop("target");
+    CTarget * vt0 = (CTarget*)t0;
+    CTarget * vt1 = (CTarget*)t1;
+    SmartGraph::Edge e0 = vt0->edge;
+    SmartGraph::Edge e1 = vt1->edge;
+    if (e0 != e1) return true;
+
+    // e0 == e1
+    auto u = graph->g.u(e0);
+    auto v = graph->g.v(e0);
+    if (u != v) return false;// not a loop
+
+    // e0 == e1 is a loop
+    double el = graph->edgeLength[e0];
+    double l0 = vt0->length;
+    double l1 = vt1->length;
+
+    if (fabs(l0 - l1) > el / 2.0) return true;
+    return false;
+}
+
+CVertex * CGraphHarmonicMap::locateCriticalPoint(CFace * f)
+{
+    CHalfEdge * he = f->halfedge();
+    CVertex * v[3];
+    v[0] = he->source();
+    v[1] = he->target();
+    v[2] = he->he_next()->target();
+
+    void * t0 = v[0]->prop("target");
+    void * t1 = v[1]->prop("target");
+    void * t2 = v[2]->prop("target");
+    CTarget * vt0 = (CTarget*)t0;
+    CTarget * vt1 = (CTarget*)t1;
+    CTarget * vt2 = (CTarget*)t2;
+    SmartGraph::Edge e0 = vt0->edge;
+    SmartGraph::Edge e1 = vt1->edge;
+    SmartGraph::Edge e2 = vt2->edge;
+    double el0 = graph->edgeLength[e0];
+    double el1 = graph->edgeLength[e1];
+    double el2 = graph->edgeLength[e2];
+    double l0 = vt0->length;
+    double l1 = vt1->length;
+    double l2 = vt2->length;
+    if (l0 > el0*0.75) l0 = el0 - l0;
+    if (l1 > el1*0.75) l1 = el1 - l1;
+    if (l2 > el2*0.75) l2 = el2 - l2;
+
+    double d[3] = { 0,0,0 };
+    d[0] = l1*l2 / (l0*l1 + l1*l2 + l2*l0);
+    d[1] = l2*l0 / (l0*l1 + l1*l2 + l2*l0);
+    d[2] = l0*l1 / (l0*l1 + l1*l2 + l2*l0);;
+    CPoint p = v[0]->point()*d[0] + v[1]->point()*d[1] + v[2]->point()*d[2];
+
+    double md = d[0];
+    int mi = 0;
+    for (int i = 0; i < 3; ++i)
     {
-        if (!hasCriticalPoint(v0, v1))
+        if (d[i] > md)
         {
-            cout << "no critical point on this edge" << endl;
-            exit(-1);
+            md = d[i];
+            mi = i;
         }
-        void * t0 = v0->prop("target");
-        void * t1 = v1->prop("target");
-        CTarget * vt0 = (CTarget*)t0;
-        CTarget * vt1 = (CTarget*)t1;
-        SmartGraph::Edge e0 = vt0->edge;
-        SmartGraph::Edge e1 = vt1->edge;
-
-        double el0 = graph->edgeLength[e0];
-        double el1 = graph->edgeLength[e1];
-        double l0 = vt0->length;
-        double l1 = vt1->length;
-        if (l0 > el0*0.75) l0 = el0 - l0;
-        if (l1 > el1*0.75) l1 = el1 - l1;
-        CPoint p = (v0->point()*l1 + v1->point()*l0) / (l0 + l1);
-        return p;
     }
-    else // critical point inside face
+    if (1 - md < 1e-3)
     {
-        void * t0 = v0->prop("target");
-        void * t1 = v1->prop("target");
-        void * t2 = v2->prop("target");
-        CTarget * vt0 = (CTarget*)t0;
-        CTarget * vt1 = (CTarget*)t1;
-        CTarget * vt2 = (CTarget*)t2;
-        SmartGraph::Edge e0 = vt0->edge;
-        SmartGraph::Edge e1 = vt1->edge;
-        SmartGraph::Edge e2 = vt2->edge;
-        double el0 = graph->edgeLength[e0];
-        double el1 = graph->edgeLength[e1];
-        double el2 = graph->edgeLength[e2];
-        double l0 = vt0->length;
-        double l1 = vt1->length;
-        double l2 = vt2->length;
-        if (l0 > el0*0.75) l0 = el0 - l0;
-        if (l1 > el1*0.75) l1 = el1 - l1;
-        if (l2 > el2*0.75) l2 = el2 - l2;
-
-        CPoint p0 = (v1->point()*l2 + v2->point()*l1) / (l1 + l2);
-        CPoint p1 = (v2->point()*l0 + v0->point()*l2) / (l2 + l0);
-        CPoint p2 = (v0->point()*l1 + v1->point()*l0) / (l0 + l1);
-        return (p0 + p1 + p2) / 3.0;
+        return v[mi];
     }
+
+    CVertex * v3 = dmesh->splitFace(f);
+    v3->point() = p;
+    return v3;
+}
+
+CVertex * CGraphHarmonicMap::locateCriticalPoint(CEdge * e)
+{
+    CVertex * v0 = mesh->edgeVertex1(e);
+    CVertex * v1 = mesh->edgeVertex2(e);
+    void * t0 = v0->prop("target");
+    void * t1 = v1->prop("target");
+    CTarget * vt0 = (CTarget*)t0;
+    CTarget * vt1 = (CTarget*)t1;
+    SmartGraph::Edge e0 = vt0->edge;
+    SmartGraph::Edge e1 = vt1->edge;
+
+    double el0 = graph->edgeLength[e0];
+    double el1 = graph->edgeLength[e1];
+    double l0 = vt0->length;
+    double l1 = vt1->length;
+    if (l0 > el0*0.5) l0 = el0 - l0;
+    if (l1 > el1*0.5) l1 = el1 - l1;
+    CPoint p = (v0->point()*l1 + v1->point()*l0) / (l0 + l1);
+    double d0 = l0 / (l0 + l1);
+    double d1 = l1 / (l0 + l1);
+    if (d0 < 1e-2) return v0;
+    if (d1 < 1e-2) return v1;
+    CVertex * v2 = dmesh->splitEdge(e);
+    v2->point() = p;
+    return v2;
 }
 
 int CGraphHarmonicMap::output(string filename)
@@ -1438,7 +1693,6 @@ int Decompose(string meshfilename, string graphfilename, string cutfilename, str
 
     return 0;
 }
-
 
 int test()
 {

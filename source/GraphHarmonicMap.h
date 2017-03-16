@@ -3,6 +3,7 @@
 #include "Mesh/mesh.h"
 #include "Mesh/iterators.h"
 #include "Mesh/dynamicmesh.h"
+#include "Mesh/boundary.h"
 #include "Graph.h"
 
 using namespace MeshLib;
@@ -39,6 +40,9 @@ public:
     int calculateEdgeLength();
     int calculateEdgeWeight();
 
+    int calculateFlatMetric();
+    int runRicciFlow();
+
     double distance(CTarget * x, CTarget * y);
     double distance(CTarget * x, const SmartGraph::Edge & e, SmartGraph::Node & nx, SmartGraph::Node & ne);
     double distance(CTarget * x, const SmartGraph::Node & n, SmartGraph::Node & nx);
@@ -50,7 +54,6 @@ public:
     int harmonicMap();
 
     int traceAllPants();
-
     int tracePants(int id, int seed, vector<CVertex*>& pants);
 
     int embedPants(SmartGraph::Node & node, vector<CVertex*> & pants);
@@ -66,8 +69,11 @@ public:
 
     int decompose();
 
-    bool hasCriticalPoint(CVertex * v0, CVertex * v1, CVertex * v2 = NULL);
-    CPoint locateCriticalPoint(CVertex * v0, CVertex * v1, CVertex * v2 = NULL);
+    bool hasCriticalPoint(CVertex * v1, CVertex * v2);
+    bool hasCriticalPoint(CEdge * e);
+    bool hasCriticalPoint(CFace * f);
+    CVertex * locateCriticalPoint(CFace * f);
+    CVertex * locateCriticalPoint(CEdge * e);
 
     int output(string filename);
 
@@ -79,4 +85,5 @@ private:
     Pants pantss;
 
     CDynamicMesh * dmesh;
+    CBoundary * boundary;
 };
