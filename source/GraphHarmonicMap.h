@@ -40,7 +40,6 @@ public:
     int calculateEdgeLength();
     int calculateEdgeWeight();
 
-    int calculateFlatMetric();
     int runRicciFlow();
 
     double distance(CTarget * x, CTarget * y);
