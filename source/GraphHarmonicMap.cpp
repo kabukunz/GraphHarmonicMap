@@ -1130,8 +1130,6 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
     x = solver.solve(bx);
     y = solver.solve(by);
 
-
-
     for (auto v : pants)
     {
         int id = v->prop("id");
@@ -1172,8 +1170,11 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
         }
         v->prop("target") = t;
     }
-
-    for (auto c : cuts)
+    Cut cut3;
+    cut3[graph->g.id(e0)] = cuts[graph->g.id(e0)];
+    cut3[graph->g.id(e1)] = cuts[graph->g.id(e1)];
+    cut3[graph->g.id(e2)] = cuts[graph->g.id(e2)];
+    for (auto c : cut3)
     {
         int id = c.first;
         auto cut = c.second;
