@@ -1,17 +1,59 @@
 #pragma once
 
 #include "Mesh/mesh.h"
-#include "Mesh/iterators.h"
 #include "Mesh/dynamicmesh.h"
 #include "Mesh/boundary.h"
 #include "Graph.h"
 
-using namespace MeshLib;
+//using namespace MeshLib;
 
 #ifndef EPS
 #define EPS 1e-7
 #endif // !EPS
 
+#define ADD_PROPERTY(T, x) \
+private:\
+    T m_##x; \
+public:\
+    inline T & x() { return m_##x; } \
+
+class CTarget;
+
+class CHVertex
+{
+    ADD_PROPERTY(CTarget*, target)
+    ADD_PROPERTY(bool, fixed)
+    ADD_PROPERTY(bool, critical)
+    ADD_PROPERTY(bool, critical2)
+    ADD_PROPERTY(double, x)
+    ADD_PROPERTY(double, y)
+    ADD_PROPERTY(bool, cut)
+    ADD_PROPERTY(bool, cut2)
+    ADD_PROPERTY(int, pants)
+    ADD_PROPERTY(double*, bx)
+};
+class CHEdge
+{
+    ADD_PROPERTY(double, weight)
+};
+class CHFace
+{
+
+};
+class CHHalfEdge
+{
+
+};
+using CMesh = MeshLib::CBaseMesh<CHVertex, CHEdge, CHFace, CHHalfEdge>;
+using CDynamicMesh = MeshLib::CDynamicMesh<CHVertex, CHEdge, CHFace, CHHalfEdge>;
+using CBoundary = MeshLib::CBoundary<CHVertex, CHEdge, CHFace, CHHalfEdge>;
+using CLoop = MeshLib::CLoop<CHVertex, CHEdge, CHFace, CHHalfEdge>;
+using CPoint = MeshLib::CPoint;
+
+using CVertex = CMesh::CVertex;
+using CEdge = CMesh::CEdge;
+using CFace = CMesh::CFace;
+using CHalfEdge = CMesh::CHalfEdge;
 
 /*
 * represent a target on the graph, identified by an edge, and the starting node, and the length from starting node
@@ -24,12 +66,16 @@ public:
     double length;
 };
 
+
+
 typedef map<int, vector<int>> Cut;
 typedef map<int, int> Seed;
 typedef map<int, vector<CVertex*>> Pants;
 
 class CGraphHarmonicMap
 {
+public:
+    
 public:
     CGraphHarmonicMap();
     ~CGraphHarmonicMap();
@@ -47,7 +93,7 @@ public:
     double distance(CTarget * x, const SmartGraph::Node & n, SmartGraph::Node & nx);
     double distance(CTarget * x, SmartGraph::Node n);
 
-    double calculateBarycenter(CVertex * v, vector<CVertex*> & nei);
+    double calculateBarycenter(CVertex * v, vector<CHalfEdge*> & nei);
 
     int initialMap(string method = string("init"));
     int harmonicMap();

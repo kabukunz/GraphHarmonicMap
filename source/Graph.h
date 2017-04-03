@@ -7,12 +7,11 @@
 #include <sstream>
 #include "lemon/smart_graph.h"
 #include "lemon/static_graph.h"
-#include "base.h"
 
 using namespace std;
 using namespace lemon;
 
-class CGraph : public CBase
+class CGraph
 {
 public:
     CGraph();
@@ -21,6 +20,7 @@ public:
     int read(string filename);
     int write(string filename);
 
+    void calculateNodeDistance();
     double distance(const SmartGraph::Node & n1, const SmartGraph::Node & n2);
 
     SmartGraph g;
@@ -30,6 +30,6 @@ public:
 
 private:
     map<int, SmartGraph::Node> nodeMap;
-    map<pair<SmartGraph::Node, SmartGraph::Node>, double> nodeDistance;
-    void calculateNodeDistance();
+    double ** nodeDist;
+    
 };
