@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.26228.4
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GraphHarmonicMap", "projects\GraphHarmonicMap\GraphHarmonicMap.vcxproj", "{DF614A0B-0701-4762-B6A8-D54D9D6D90BB}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FoliationRegistration", "projects\FoliationRegistration\FoliationRegistration.vcxproj", "{8D04AAC8-BC0A-468F-ACAB-45292A8A4D8C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -15,6 +17,10 @@ Global
 		{DF614A0B-0701-4762-B6A8-D54D9D6D90BB}.Debug|x64.Build.0 = Debug|x64
 		{DF614A0B-0701-4762-B6A8-D54D9D6D90BB}.Release|x64.ActiveCfg = Release|x64
 		{DF614A0B-0701-4762-B6A8-D54D9D6D90BB}.Release|x64.Build.0 = Release|x64
+		{8D04AAC8-BC0A-468F-ACAB-45292A8A4D8C}.Debug|x64.ActiveCfg = Debug|x64
+		{8D04AAC8-BC0A-468F-ACAB-45292A8A4D8C}.Debug|x64.Build.0 = Debug|x64
+		{8D04AAC8-BC0A-468F-ACAB-45292A8A4D8C}.Release|x64.ActiveCfg = Release|x64
+		{8D04AAC8-BC0A-468F-ACAB-45292A8A4D8C}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

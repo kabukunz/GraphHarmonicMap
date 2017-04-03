@@ -4,4 +4,4 @@ Node 1 1 0
 # Arc #id n1 n2 length
 Arc 0 0 0 3.0
 Arc 1 1 1 3.0
-Arc 2 0 1 0.1
+Arc 2 0 1 0.25
