@@ -330,8 +330,8 @@ int CGraphHarmonicMap::runRicciFlow()
         CEdge * e = *eit;
         e->length() = el(e->id());
         ostringstream oss;
-        oss << "length=(" << e->length() << ")";
-        e->string() = oss.str();
+        oss << " length=(" << e->length() << ")";
+        e->string() += oss.str();
     }
 
     k = 1;
@@ -771,6 +771,10 @@ int CGraphHarmonicMap::initialMap(string method)
     for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
     {
         CVertex * v = *vit;
+        if (!v->hasProp("target"))
+        {
+            cout << "failed to initialize vertex " << v->id() << endl;
+        }
         void * t = v->prop("target");
         CTarget * vt = (CTarget*)t;
         auto edge = vt->edge;
@@ -1493,6 +1497,24 @@ int CGraphHarmonicMap::decompose()
         }
         oss << ")";
         f->string() = oss.str();
+    }
+
+    // label sharp edge
+    for (MeshEdgeIterator eit(mesh); !eit.end(); ++eit)
+    {
+        CEdge * e = *eit;
+        CVertex * v1 = mesh->edgeVertex1(e);
+        CVertex * v2 = mesh->edgeVertex2(e);
+        bool c1 = v1->hasProp("critical2") && v1->prop("critical2");
+        bool c2 = v2->hasProp("critical2") && v2->prop("critical2");
+        if (c1&&c2)
+        {
+            e->string() = "sharp=(1)";
+        }
+        else 
+        {
+            //e->string() = "sharp=(0)";
+        }
     }
 
     for (MeshVertexIterator vit(mesh); !vit.end(); ++vit)
