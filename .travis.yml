@@ -6,9 +6,12 @@ compiler:
 - clang
 os:
 - linux
-- osx
+git:
+  submodules: false
 before_install:
 - echo -e "machine github.com\n  login $CI_USER_TOKEN" >> ~/.netrc
+- sed -i 's/https:\/\/github.com/https:\/\/$CI_USER_TOKEN@github.com/' .gitmodules
+- git submodule update --init --recursive
 install: make cmake
 script:
 - mkdir build
