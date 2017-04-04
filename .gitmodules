@@ -1,9 +1,9 @@
 [submodule "MeshLib"]
 	path = third-party/MeshLib
-	url = https://github.com/cfwen/MeshLib.git
+	url = git@github.com:cfwen/MeshLib.git
 [submodule "eigen"]
 	path = third-party/eigen
-	url = https://github.com/cfwen/eigen.git
+	url = git@github.com:cfwen/eigen.git
 [submodule "lemon"]
 	path = third-party/lemon
-	url = https://github.com/cfwen/lemon.git
+	url = git@github.com:cfwen/lemon.git
