@@ -21,6 +21,7 @@ class CTarget;
 
 class CHVertex
 {
+    ADD_PROPERTY(int, index)
     ADD_PROPERTY(CTarget*, target)
     ADD_PROPERTY(bool, fixed)
     ADD_PROPERTY(bool, critical)
@@ -38,7 +39,7 @@ class CHEdge
 };
 class CHFace
 {
-
+    ADD_PROPERTY(int, index)
 };
 class CHHalfEdge
 {
@@ -75,7 +76,7 @@ typedef map<int, vector<CVertex*>> Pants;
 class CGraphHarmonicMap
 {
 public:
-    
+
 public:
     CGraphHarmonicMap();
     ~CGraphHarmonicMap();

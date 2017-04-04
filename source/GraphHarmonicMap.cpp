@@ -136,29 +136,22 @@ int CGraphHarmonicMap::calculateEdgeWeight()
     for (CMesh::MeshEdgeIterator eit(mesh); !eit.end(); ++eit)
     {
         CEdge * e = *eit;
-        e->weight() = 0.0;
         CHalfEdge * he0 = e->halfedge(0);
         CHalfEdge * he1 = e->halfedge(1);
-        if (he0) he0->touched() = false;
-        if (he1) he1->touched() = false;
-    }
-    for (CMesh::MeshHalfEdgeIterator heit(mesh); !heit.end(); ++heit)
-    {
-        CHalfEdge * he = *heit;
-        if (he->touched()) continue;
-        CHalfEdge * he_next = he->he_next();
-        CHalfEdge * he_prev = he->he_prev();
-        double theta1 = inverse_cosine_law(he->edge()->length(), he_next->edge()->length(), he_prev->edge()->length());
-        he->edge()->weight() = 0.5 / tan(theta1);
-        he->touched() = true;
-
-        CHalfEdge * he_dual = he->he_sym();
-        if (!he_dual || he_dual->touched()) continue;
-        CHalfEdge * he_dual_next = he_dual->he_next();
-        CHalfEdge * he_dual_prev = he_dual->he_prev();
-        double theta2 = inverse_cosine_law(he_dual->edge()->length(), he_dual_next->edge()->length(), he_dual_prev->edge()->length());
-        he->edge()->weight() = 0.5 / tan(theta1) + 0.5 / tan(theta2);
-        he_dual->touched() = true;
+        if (he0)
+        {
+            CHalfEdge * he_next = he0->he_next();
+            CHalfEdge * he_prev = he0->he_prev();
+            double theta = inverse_cosine_law(e->length(), he_next->edge()->length(), he_prev->edge()->length());
+            e->weight() = 0.5 / tan(theta);
+        }
+        if (he1)
+        {
+            CHalfEdge * he_next = he1->he_next();
+            CHalfEdge * he_prev = he1->he_prev();
+            double theta = inverse_cosine_law(e->length(), he_next->edge()->length(), he_prev->edge()->length());
+            e->weight() += 0.5 / tan(theta);
+        }
     }
     return 0;
 }
@@ -394,10 +387,6 @@ inline double quadraticMininum(double a, double b, double c, double x0, double x
             fm = f2;
         }
     }
-    if (x > x1) 
-    {
-        cout << x << endl;
-    }
     return fm;
 }
 
@@ -443,11 +432,6 @@ double CGraphHarmonicMap::distance(CTarget * x, CTarget * y)
             else dey += ely - y->length;
         }
 
-    }
-    if (dey > 10)
-    {        
-        distance(x, ey, nx, ny);
-        cout << dey << endl;
     }
     return dey;
 }
@@ -698,10 +682,6 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v, vector<CHalfEdge*> & 
             vm = vx[i];
         }
     }
-    if (vm->length > 10)
-    {
-        cout << vm->length << endl;
-    }
     CTarget * vt = v->target();
     double dv = distance(vm, vt);
     vt->edge = vm->edge;
@@ -767,12 +747,11 @@ int CGraphHarmonicMap::initialMap(string method)
     }
     else
     {
-        // renumber vertex
         int i = 0;
         for (CMesh::MeshVertexIterator vit(mesh); !vit.end(); ++vit)
         {
             CVertex * v = *vit;
-            v->id() = i++;
+            v->index() = i++;
             v->cut() = false;
             v->cut2() = false;
             v->x() = 0.0;
@@ -984,7 +963,7 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
     int i = 0;
     for (auto v : pants)
     {
-        v->id() = i++;
+        v->index() = i++;
     }
 
     if (e0 == e1)
@@ -1104,21 +1083,21 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
 
     for (auto v : pants)
     {
-        int id = v->id();
+        int id = v->index();
         bool isCut = v->cut();
         bool isCut2 = v->cut2();
         bool c = isCut || isCut2;
         if (!c)
         {
-            for (CMesh::VertexOutHalfEdgeIterator heit(v); !heit.end(); ++heit)
+            for (CMesh::VertexVertexIterator vit(v); !vit.end(); ++vit)
             {
-                CHalfEdge * he = *heit;
-                CVertex * v2 = he->target();
-                int id2 = v2->id();
+                CVertex * v2 = *vit;
+                int id2 = v2->index();
                 bool isCut = v2->cut();
                 bool isCut2 = v2->cut2();
                 bool c2 = isCut || isCut2;
-                double w = he->edge()->weight();
+                CEdge * e = mesh->edge(v, v2);
+                double w = e->weight();
                 triplets.push_back(T(id, id, -w));
                 if (!c2)
                 {
@@ -1159,7 +1138,7 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
 
     for (auto v : pants)
     {
-        int id = v->id();
+        int id = v->index();
         double xi = x[id];
         double yi = y[id];
         v->x() = xi;
@@ -1332,13 +1311,13 @@ int CGraphHarmonicMap::decompose()
     for (CMesh::MeshVertexIterator vit(mesh); !vit.end(); ++vit)
     {
         CVertex * v = *vit;
-        v->id() = k++;
+        v->index() = k++;
     }
     k = 0;
     for (CMesh::MeshFaceIterator fit(mesh); !fit.end(); ++fit)
     {
         CFace * f = *fit;
-        f->id() = k++;
+        f->index() = k++;
     }
     for (CMesh::MeshVertexIterator vit(mesh); !vit.end(); ++vit)
     {
@@ -1352,7 +1331,7 @@ int CGraphHarmonicMap::decompose()
         if (l > el*0.75) l = el - l;
         if (!isfixed && l <= el*EPS)
         {
-            cout << "critical vertex: " << v->id() << endl;
+            cout << "critical vertex: " << v->index() << endl;
             v->critical2() = true;
         }
     }
@@ -1367,7 +1346,7 @@ int CGraphHarmonicMap::decompose()
             v3->critical() = true;
             v3->critical2() = true;
             v3->fixed() = true;
-            cout << "critical point inside triangle: " << v3->id() << endl;
+            cout << "critical point inside triangle: " << v3->index() << endl;
         }
     }
 
@@ -1414,7 +1393,7 @@ int CGraphHarmonicMap::decompose()
         /*if (c0 && c1 && c2)
         {
             cout << "face can't have 3 critical vertices" << endl;
-            cout << "face " << f->id() << " is critical: " << hasCriticalPoint(f) << endl;
+            cout << "face " << f->index() << " is critical: " << hasCriticalPoint(f) << endl;
             exit(-1);
         }*/
 
@@ -1452,7 +1431,7 @@ int CGraphHarmonicMap::decompose()
         int id = -1;
         if (eids.size() != 1)
         {
-            cerr << "face not been splitted: " << f->id() << endl;
+            cerr << "face not been splitted: " << f->index() << endl;
             exit(-1);
         }
         else if (eids.size() == 1)
@@ -1467,7 +1446,7 @@ int CGraphHarmonicMap::decompose()
 
         if (!vst)
         {
-            cout << "face " << f->id() << "has 3 critical vertex" << endl;
+            cout << "face " << f->index() << "has 3 critical vertex" << endl;
             exit(-1);
         }
         else
