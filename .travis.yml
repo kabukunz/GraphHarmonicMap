@@ -1,16 +1,19 @@
 language: cpp
+sudo: false
 dist: trusty
 compiler:
 - gcc
+- clang
 os:
 - linux
-install: make cmake
+- osx
 before_install:
 - echo -e "machine github.com\n  login $CI_USER_TOKEN" >> ~/.netrc
+install: make cmake
+script:
 - mkdir build
 - cd build
 - cmake ..
-script: make
 branches:
   only:
   - master
