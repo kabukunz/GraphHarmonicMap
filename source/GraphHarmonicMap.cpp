@@ -1174,9 +1174,9 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
                 t->length = -y;
             }
         }
-        if (t->length > 10)
+        if (t->length > el1)
         {
-            cout << t->length << endl;
+            cerr << "initial map: vertex target out of edge" << endl;
         }
         v->target() = t;
     }
