@@ -1,0 +1,16 @@
+language: cpp
+compiler: 
+- gcc
+os:
+- linux
+install: make cmake
+before_install:
+- mkdir build
+- cd build
+- cmake ..
+script: make
+branches:
+  only:
+  - master
+notifications:
+  email: false
