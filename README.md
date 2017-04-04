@@ -1,4 +1,7 @@
 # GraphHarmonicMap
+
+[![Build Status](https://travis-ci.com/cfwen/GraphHarmonicMap.svg?token=L5vntsWLqtGBCrrDqXBq&branch=master)](https://travis-ci.com/cfwen/GraphHarmonicMap)
+
 implement harmonic map from arbitrary surface to its pants decomposition graph
 
 ## Prerequisites
