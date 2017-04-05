@@ -2,6 +2,7 @@
 #include <queue>
 #include <set>
 #include <ctime>
+#include <cmath>
 
 #ifndef __clang__
 #include <omp.h>
@@ -54,13 +55,13 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename, const string & cut
         {
             std::istringstream iss(line);
             string type;
-            int id, sign;
+            int cid, sign;
             iss >> type;
             if (type[0] == '#') continue;
             if (type == "Cut")
             {
-                iss >> id >> sign;
-                auto edge = graph->g.edgeFromId(id);
+                iss >> cid >> sign;
+                auto edge = graph->g.edgeFromId(cid);
                 graph->edgeSign[edge] = sign;
                 vector<int> cut;
                 int vid = 0;
@@ -68,13 +69,13 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename, const string & cut
                 {
                     cut.push_back(vid);
                 }
-                cuts[id] = cut;
+                cuts[cid] = cut;
             }
             if (type == "Seed")
             {
-                int id, seed;
-                iss >> id >> seed;
-                seeds[id] = seed;
+                int sid, seed;
+                iss >> sid >> seed;
+                seeds[sid] = seed;
             }
         }
     }
@@ -101,7 +102,6 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename, const string & cut
         int id = c.first;
         auto cut = c.second;
         auto e = graph->g.edgeFromId(id);
-        double el = graph->edgeLength[e];
         auto u = graph->g.u(e);
         auto v = graph->g.v(e);
         bool isfixed = graph->nodeValence[u] == 1 || graph->nodeValence[v] == 1;
@@ -109,8 +109,8 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename, const string & cut
         {
             for (auto i : cut)
             {
-                CVertex * v = mesh->vertex(i);
-                v->fixed() = true;
+                CVertex * vi = mesh->vertex(i);
+                vi->fixed() = true;
             }
         }
     }
@@ -282,7 +282,7 @@ int CGraphHarmonicMap::runRicciFlow()
 
         double err = abs(vk - vkt).maxCoeff();
         cout << "current error is " << err << endl;
-        if (err < EPS || isnan(err)) break;
+        if (err < EPS || std::isnan(err)) break;
 
         // calculate edge weight
         Array w = sqrt(r.col(0)*r.col(1)*r.col(2) / (r.col(0) + r.col(1) + r.col(2)));
@@ -398,10 +398,10 @@ double CGraphHarmonicMap::distance(CTarget * x, CTarget * y)
     // first compute the shorest distance between the node of two edges
     auto & ex = x->edge;
     auto & ey = y->edge;
-    double elx = graph->edgeLength[ex];
+    //double elx = graph->edgeLength[ex];
     double ely = graph->edgeLength[ey];
-    const auto & ux = graph->g.u(ex);
-    const auto & vx = graph->g.v(ex);
+    //const auto & ux = graph->g.u(ex);
+    //const auto & vx = graph->g.v(ex);
     const auto & uy = graph->g.u(ey);
     const auto & vy = graph->g.v(ey);
     SmartGraph::Node nx, ny;
@@ -468,7 +468,7 @@ double CGraphHarmonicMap::distance(CTarget * x, const SmartGraph::Edge & e, Smar
 
 double CGraphHarmonicMap::distance(CTarget * x, const SmartGraph::Node & n, SmartGraph::Node & nx)
 {
-    bool isLoop = false;
+    //bool isLoop = false;
     auto e = x->edge;
     double el = graph->edgeLength[e];
 
@@ -541,8 +541,8 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v, vector<CHalfEdge*> & 
     ew.reserve(nei.size());
     for (auto * he : nei)
     {
-        CVertex * v = he->target();
-        CTarget * vt = v->target();
+        CVertex * vi = he->target();
+        CTarget * vt = vi->target();
         neit.push_back(vt);        
         double w = he->edge()->weight();
         ew.push_back(w);
@@ -558,8 +558,8 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v, vector<CHalfEdge*> & 
     //bx.resize(nei.size());
     for (SmartGraph::EdgeIt e(graph->g); e != INVALID; ++e)
     {
-        auto u = graph->g.u(e);
-        auto v = graph->g.v(e);
+        auto ue = graph->g.u(e);
+        auto ve = graph->g.v(e);
         double el = graph->edgeLength[e];
         vector<short> be;
         be.reserve(neit.size());
@@ -576,7 +576,7 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v, vector<CHalfEdge*> & 
             }
             be.push_back(b);
         }
-        if (u == v) // if e is a loop
+        if (ue == ve) // if e is a loop
         {
             sort(bp.begin(), bp.end());
             vector<double> bx0(neit.size());
@@ -589,25 +589,25 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v, vector<CHalfEdge*> & 
                 }
                 else
                 {
-                    double dy = distance(neit[i], u);
+                    double dy = distance(neit[i], ue);
                     bx0[i] = dy;
                 }
             }
             // find minimum point in this loop
             CTarget * t = new CTarget();
             t->edge = e;
-            t->node = u;
+            t->node = ue;
             t->length = 0.0;
             double ei = 1.0 / EPS;
             for (int i = 0; i < bp.size() - 1; ++i)
             {
-                vector<double> bx(bx0);
+                //vector<double> bx(bx0);
                 double x0 = bp[i];
                 double x1 = bp[i + 1];
                 double xm = (x0 + x1) / 2.0;
 
                 double b = 0.0, c = 0.0;
-                for (int j = 0; j < bx.size(); ++j)
+                for (int j = 0; j < neit.size(); ++j)
                 {
                     if (be[j])
                     {
@@ -646,8 +646,8 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v, vector<CHalfEdge*> & 
                 }
                 else
                 {
-                    double du = distance(neit[i], u, dummyNode);
-                    double dv = distance(neit[i], v, dummyNode);
+                    double du = distance(neit[i], ue, dummyNode);
+                    double dv = distance(neit[i], ve, dummyNode);
                     if (du <= dv) bx[i] = du;
                     else bx[i] = -dv - el;
                 }
@@ -660,7 +660,7 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v, vector<CHalfEdge*> & 
             }
             CTarget * t = new CTarget();
             t->edge = e;
-            t->node = u;
+            t->node = ue;
             t->length = 0.0;
             double x = 0;
             double mi = quadraticMininum(a, b, c, 0, el, x);
@@ -760,7 +760,6 @@ int CGraphHarmonicMap::initialMap(string method)
         // label cuts
         for (auto c : cuts)
         {
-            int id = c.first;
             auto vs = c.second;
             for (auto id : vs)
             {
@@ -849,10 +848,10 @@ int CGraphHarmonicMap::harmonicMap()
         int sign = 0;
         if (vt)
         {            
-            CPoint & p = v->point();
+            //CPoint & p = v->point();
             auto e = vt->edge;
             sign = graph->edgeSign[e];
-            double el = graph->edgeLength[e];
+            //double el = graph->edgeLength[e];
             eid = graph->g.id(e);
             nid = graph->g.id(vt->node);
             length = vt->length;
@@ -960,10 +959,10 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
 int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pants, SmartGraph::Edge & e0, SmartGraph::Edge & e1, SmartGraph::Edge & e2)
 {
     // renumber pants vertex
-    int i = 0;
+    int k = 0;
     for (auto v : pants)
     {
-        v->index() = i++;
+        v->index() = k++;
     }
 
     if (e0 == e1)
@@ -1189,21 +1188,21 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
         int id = c.first;
         auto cut = c.second;
         auto e = graph->g.edgeFromId(id);
-        double el = graph->edgeLength[e];
+        //double el = graph->edgeLength[e];
         auto u = graph->g.u(e);
         auto v = graph->g.v(e);
         SmartGraph::Node n = u == node ? v : u;
         for (auto i : cut)
         {
-            CVertex * v = mesh->vertex(i);
-            bool isfixed = v->fixed();
+            CVertex * vi = mesh->vertex(i);
+            bool isfixed = vi->fixed();
             if (isfixed)
             {
-                CTarget * vt = v->target();
+                CTarget * vt = vi->target();
                 vt->edge = e;
                 vt->node = n;
                 vt->length = 0;
-                v->target() = vt;
+                vi->target() = vt;
             }
 
         }
@@ -1322,7 +1321,7 @@ int CGraphHarmonicMap::decompose()
     for (CMesh::MeshVertexIterator vit(mesh); !vit.end(); ++vit)
     {
         CVertex * v = *vit;
-        bool critical = false;
+        //bool critical = false;
         bool isfixed = v->fixed();
         CTarget * vt = v->target();
         SmartGraph::Edge e = vt->edge;
@@ -1533,9 +1532,9 @@ int CGraphHarmonicMap::decompose()
 bool CGraphHarmonicMap::hasCriticalPoint(CFace * f)
 {
     CHalfEdge * he = f->halfedge();
-    CVertex * v0 = he->source();
-    CVertex * v1 = he->target();
-    CVertex * v2 = he->he_next()->target();
+    //CVertex * v0 = he->source();
+    //CVertex * v1 = he->target();
+    //CVertex * v2 = he->he_next()->target();
 
     CEdge * e0 = he->edge();
     CEdge * e1 = he->he_next()->edge();
