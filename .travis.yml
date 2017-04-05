@@ -1,0 +1,49 @@
+language: generic
+sudo: false
+dist: trusty
+matrix:
+  exclude:
+    - os: linux
+      compiler: gcc
+  include:
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-4.9
+      env: COMPILER_NAME=gcc CXX=g++-4.9 CC=gcc-4.9
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-6
+      env: COMPILER_NAME=gcc CXX=g++-6 CC=gcc-6
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-trusty-3.9
+          packages:
+            - clang-3.9
+      env: COMPILER_NAME=clang CXX=clang++-3.9 CC=clang-3.9
+git:
+  submodules: false
+before_install:
+- echo -e "machine github.com\n  login $CI_USER_TOKEN" >> ~/.netrc
+- sed -i 's/https:\/\/github.com/https:\/\/'"$CI_USER_TOKEN"'@github.com/' .gitmodules
+- git submodule update --init --recursive
+install: true
+script:
+- mkdir build
+- cd build
+- cmake ..
+- make
+branches:
+  only:
+  - master
+notifications:
+  email: false
