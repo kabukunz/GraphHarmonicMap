@@ -1,40 +1,35 @@
-language: cpp
+language: generic
 sudo: false
 dist: trusty
-os:
-- linux
 matrix:
   exclude:
     - os: linux
       compiler: gcc
   include:
     - os: linux
-      compiler: gcc
       addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
           packages:
             - g++-4.9
-      env: COMPILER=g++-4.9
+      env: COMPILER_NAME=gcc CXX=g++-4.9 CC=gcc-4.9
     - os: linux
-      compiler: gcc
       addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
           packages:
             - g++-6
-      env: COMPILER=g++-6
+      env: COMPILER_NAME=gcc CXX=g++-6 CC=gcc-6
     - os: linux
-      compiler: clang
       addons:
         apt:
-          sources:            
+          sources:
             - llvm-toolchain-trusty
           packages:
             - clang-3.9
-      env: COMPILER=clang++-3.9
+      env: COMPILER_NAME=clang CXX=clang++3.9 CC=clang-3.9
 git:
   submodules: false
 before_install:
