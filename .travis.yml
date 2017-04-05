@@ -5,9 +5,11 @@ os:
 - linux
 matrix:
   exclude:
-    - compiler: gcc
+    - os: linux
+      compiler: gcc
   include:
-    - compiler: gcc
+    - os: linux
+      compiler: gcc
       addons:
         apt:
           sources:
@@ -15,7 +17,8 @@ matrix:
           packages:
             - g++-4.9
       env: COMPILER=g++-4.9
-    - compiler: gcc
+    - os: linux
+      compiler: gcc
       addons:
         apt:
           sources:
@@ -23,15 +26,15 @@ matrix:
           packages:
             - g++-6
       env: COMPILER=g++-6
-    - compiler: clang
+    - os: linux
+      compiler: clang
       addons:
         apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-trusty-3.8
+          sources:            
+            - llvm-toolchain-trusty
           packages:
-            - clang-3.8
-      env: COMPILER=clang++-3.8
+            - clang-3.9
+      env: COMPILER=clang++-3.9
 git:
   submodules: false
 before_install:
@@ -43,6 +46,7 @@ script:
 - mkdir build
 - cd build
 - cmake ..
+- make
 branches:
   only:
   - master
