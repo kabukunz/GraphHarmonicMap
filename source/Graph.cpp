@@ -84,7 +84,7 @@ void CGraph::calculateNodeDistance()
     SmartGraph::NodeMap<double> dist(g);
     auto dij = dijkstra(g, edgeLength).distMap(dist);
     nodeDist = new double*[g.nodeNum()];
-    for (int i = 0; i<g.nodeNum(); ++i)
+    for (int i = 0; i < g.nodeNum(); ++i)
     {
         nodeDist[i] = new double[g.nodeNum()];
     }
@@ -103,33 +103,33 @@ void CGraph::calculateNodeDistance()
 
 int CGraph::colorize()
 {
-	for (SmartGraph::NodeIt n(g); n != INVALID; ++n)
-	{
-		for (SmartGraph::OutArcIt oa(g, n); oa != INVALID; ++oa)
-		{
-			SmartGraph::Edge e = oa;
-			edgeSign[e] = 0;
-		}
-	}
-	int s = 1;
-	for (SmartGraph::NodeIt n(g); n != INVALID; ++n)
-	{
-		for (SmartGraph::OutArcIt oa(g, n); oa != INVALID; ++oa)
-		{
-			SmartGraph::Edge e = oa;
-			int sign = edgeSign[e];
-			if (sign != 0) s = -sign;
-		}
-		for (SmartGraph::OutArcIt oa(g, n); oa != INVALID; ++oa)
-		{
-			SmartGraph::Edge e = oa;
-			int sign = edgeSign[e];
-			if (sign == 0)
-			{
-				edgeSign[e] = s;
-				s = -s;
-			}
-		}
-	}
-	return 0;
+    for (SmartGraph::NodeIt n(g); n != INVALID; ++n)
+    {
+        for (SmartGraph::OutArcIt oa(g, n); oa != INVALID; ++oa)
+        {
+            SmartGraph::Edge e = oa;
+            edgeSign[e] = 0;
+        }
+    }
+    int s = 1;
+    for (SmartGraph::NodeIt n(g); n != INVALID; ++n)
+    {
+        for (SmartGraph::OutArcIt oa(g, n); oa != INVALID; ++oa)
+        {
+            SmartGraph::Edge e = oa;
+            int sign = edgeSign[e];
+            if (sign != 0) s = -sign;
+        }
+        for (SmartGraph::OutArcIt oa(g, n); oa != INVALID; ++oa)
+        {
+            SmartGraph::Edge e = oa;
+            int sign = edgeSign[e];
+            if (sign == 0)
+            {
+                edgeSign[e] = s;
+                s = -s;
+            }
+        }
+    }
+    return 0;
 }

@@ -23,7 +23,7 @@ public:
     void calculateNodeDistance();
     double distance(const SmartGraph::Node & n1, const SmartGraph::Node & n2);
 
-	int colorize();
+    int colorize();
 
     SmartGraph g;
     SmartGraph::EdgeMap<double> edgeLength;
@@ -33,5 +33,5 @@ public:
 private:
     map<int, SmartGraph::Node> nodeMap;
     double ** nodeDist;
-    
+
 };

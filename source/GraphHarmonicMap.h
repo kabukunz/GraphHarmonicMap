@@ -32,12 +32,12 @@ class CHVertex
     ADD_PROPERTY(bool, cut2)
     ADD_PROPERTY(int, pants)
     ADD_PROPERTY(double*, bx)
-	ADD_PROPERTY(double, u)
+    ADD_PROPERTY(double, u)
 };
 class CHEdge
 {
     ADD_PROPERTY(double, weight)
-	ADD_PROPERTY(int, index)
+    ADD_PROPERTY(int, index)
 };
 class CHFace
 {
