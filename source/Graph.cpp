@@ -101,4 +101,35 @@ void CGraph::calculateNodeDistance()
     }
 }
 
-
+int CGraph::colorize()
+{
+	for (SmartGraph::NodeIt n(g); n != INVALID; ++n)
+	{
+		for (SmartGraph::OutArcIt oa(g, n); oa != INVALID; ++oa)
+		{
+			SmartGraph::Edge e = oa;
+			edgeSign[e] = 0;
+		}
+	}
+	int s = 1;
+	for (SmartGraph::NodeIt n(g); n != INVALID; ++n)
+	{
+		for (SmartGraph::OutArcIt oa(g, n); oa != INVALID; ++oa)
+		{
+			SmartGraph::Edge e = oa;
+			int sign = edgeSign[e];
+			if (sign != 0) s = -sign;
+		}
+		for (SmartGraph::OutArcIt oa(g, n); oa != INVALID; ++oa)
+		{
+			SmartGraph::Edge e = oa;
+			int sign = edgeSign[e];
+			if (sign == 0)
+			{
+				edgeSign[e] = s;
+				s = -s;
+			}
+		}
+	}
+	return 0;
+}

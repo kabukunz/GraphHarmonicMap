@@ -32,10 +32,12 @@ class CHVertex
     ADD_PROPERTY(bool, cut2)
     ADD_PROPERTY(int, pants)
     ADD_PROPERTY(double*, bx)
+	ADD_PROPERTY(double, u)
 };
 class CHEdge
 {
     ADD_PROPERTY(double, weight)
+	ADD_PROPERTY(int, index)
 };
 class CHFace
 {
@@ -69,8 +71,8 @@ public:
 
 
 
-typedef map<int, vector<int>> Cut;
-typedef map<int, int> Seed;
+typedef map<int, vector<CVertex*>> Cut;
+typedef map<int, CVertex*> Seed;
 typedef map<int, vector<CVertex*>> Pants;
 
 class CGraphHarmonicMap
@@ -94,22 +96,20 @@ public:
     double distance(CTarget * x, const SmartGraph::Node & n, SmartGraph::Node & nx);
     double distance(CTarget * x, SmartGraph::Node n);
 
-    double calculateBarycenter(CVertex * v, vector<CHalfEdge*> & nei);
+    double calculateBarycenter(CVertex * v);
 
     int initialMap(string method = string("init"));
     int harmonicMap();
 
     int traceAllPants();
-    int tracePants(int id, int seed, vector<CVertex*>& pants);
+    int tracePants(int id, CVertex * seed, vector<CVertex*> & pants);
 
     int embedPants(SmartGraph::Node & node, vector<CVertex*> & pants);
     int embedPants(SmartGraph::Node & node, vector<CVertex*> & pants, SmartGraph::Edge & e0, SmartGraph::Edge & e1, SmartGraph::Edge & e2);
 
-    int findNeighbors(vector<int> & cut, vector<CVertex*> & vs1, vector<CVertex*> & vs2);
+    int findNeighbors(vector<CVertex*> & cut, vector<CVertex*> & vs1, vector<CVertex*> & vs2);
 
     void test();
-
-    int colorizeGraph();
 
     int traceCriticalTrajectory();
 
