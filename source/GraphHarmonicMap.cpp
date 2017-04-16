@@ -495,6 +495,7 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v)
     if (isfixed) return 0.0;
 
     vector<CVertex*> & nei = v->vertices();
+    CTarget* * neit = v->neit();
     double * ew = v->ew();
     double a = v->ewsum();
     int nn = v->nn();
@@ -516,7 +517,7 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v)
         bp[2] = el;
         for (int i = 0; i < nn; ++i)
         {
-            CTarget * vt = nei[i]->target();
+            CTarget * vt = neit[i];
             short b = vt->edge == e;
             if (b)
             {
@@ -532,11 +533,11 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v)
             {
                 if (be[i])
                 {
-                    bx[i] = -nei[i]->target()->length;
+                    bx[i] = -neit[i]->length;
                 }
                 else
                 {
-                    bx[i] = distance(nei[i]->target(), ue);
+                    bx[i] = distance(neit[i], ue);
                 }
             }
             // find minimum point in this loop
@@ -583,13 +584,13 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v)
             {
                 if (be[i])
                 {
-                    double x = -nei[i]->target()->length;
+                    double x = -neit[i]->length;
                     bx[i] = x;
                 }
                 else
                 {
-                    double du = distance(nei[i]->target(), ue, dummyNode);
-                    double dv = distance(nei[i]->target(), ve, dummyNode);
+                    double du = distance(neit[i], ue, dummyNode);
+                    double dv = distance(neit[i], ve, dummyNode);
                     if (du <= dv) bx[i] = du;
                     else bx[i] = -dv - el;
                 }
