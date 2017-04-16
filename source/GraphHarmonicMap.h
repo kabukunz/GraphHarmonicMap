@@ -31,8 +31,17 @@ class CHVertex
     ADD_PROPERTY(bool, cut)
     ADD_PROPERTY(bool, cut2)
     ADD_PROPERTY(int, pants)
-    ADD_PROPERTY(double*, bx)
     ADD_PROPERTY(double, u)
+
+    ADD_PROPERTY(int, nn)
+    ADD_PROPERTY(CTarget**, neit)
+    ADD_PROPERTY(double*, ew)
+    ADD_PROPERTY(double, ewsum)
+    ADD_PROPERTY(double*, bx)
+    ADD_PROPERTY(short*, be)
+    ADD_PROPERTY(double*, bp)
+    ADD_PROPERTY(CTarget**, vx)
+    ADD_PROPERTY(double*, fm)
 };
 class CHEdge
 {

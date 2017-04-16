@@ -494,81 +494,65 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v)
     bool isfixed = v->fixed();
     if (isfixed) return 0.0;
 
-    vector<CEdge*> & nei = v->edges();
-    vector<CTarget*> neit;
-    neit.reserve(nei.size());
-    vector<double> ew;
-    ew.reserve(nei.size());
-    for (auto * e : nei)
-    {
-        CVertex * vi = e->vertex1();
-        if (vi == v) vi = e->vertex2();
-        CTarget * vt = vi->target();
-        neit.push_back(vt);
-        double w = e->weight();
-        ew.push_back(w);
-    }
-    double a = 0.0;
-    for (double w : ew) a += w;
+    vector<CVertex*> & nei = v->vertices();
+    double * ew = v->ew();
+    double a = v->ewsum();
+    int nn = v->nn();
     SmartGraph::Node dummyNode;
-    vector<double> fm;
-    fm.reserve(graph->g.edgeNum());
-    vector<CTarget*> vx;
-    vx.reserve(graph->g.edgeNum());
     double * bx = v->bx();
-    //bx.resize(nei.size());
+    short  * be = v->be();
+    double * bp = v->bp();
+    CTarget* * vx = v->vx();
+    double * fm = v->fm();
+    
     for (SmartGraph::EdgeIt e(graph->g); e != INVALID; ++e)
     {
         auto ue = graph->g.u(e);
         auto ve = graph->g.v(e);
         double el = graph->edgeLength[e];
-        vector<short> be;
-        be.reserve(neit.size());
-        vector<double> bp = { 0, el / 2.0, el };
-        bp.reserve(3 + neit.size());
-        for (auto it = neit.begin(); it != neit.end(); ++it)
+        int eid = graph->g.id(e);
+        bp[0] = 0;
+        bp[1] = el / 2.0;
+        bp[2] = el;
+        for (int i = 0; i < nn; ++i)
         {
-            CTarget * vt = *it;
+            CTarget * vt = nei[i]->target();
             short b = vt->edge == e;
             if (b)
             {
-                if (vt->length < el / 2.0) bp.push_back(vt->length + el / 2.0);
-                else bp.push_back(vt->length - el / 2.0);
+                if (vt->length < el / 2.0) bp[i+3] = (vt->length + el / 2.0);
+                else bp[i+3] = (vt->length - el / 2.0);
             }
-            be.push_back(b);
+            be[i] = b;
         }
         if (ue == ve) // if e is a loop
         {
-            sort(bp.begin(), bp.end());
-            vector<double> bx0(neit.size());
-            for (int i = 0; i < neit.size(); ++i)
+            sort(bp, bp+nn+3);
+            for (int i = 0; i < nn; ++i)
             {
                 if (be[i])
                 {
-                    double x = -neit[i]->length;
-                    bx0[i] = x;
+                    bx[i] = -nei[i]->target()->length;
                 }
                 else
                 {
-                    double dy = distance(neit[i], ue);
-                    bx0[i] = dy;
+                    bx[i] = distance(nei[i]->target(), ue);
                 }
             }
             // find minimum point in this loop
-            CTarget * t = new CTarget();
+            CTarget * t = vx[eid];
             t->edge = e;
             t->node = ue;
             t->length = 0.0;
             double ei = 1.0 / EPS;
-            for (int i = 0; i < bp.size() - 1; ++i)
+            for (int i = 0; i < nn + 2; ++i)
             {
-                //vector<double> bx(bx0);
                 double x0 = bp[i];
                 double x1 = bp[i + 1];
                 double xm = (x0 + x1) / 2.0;
 
                 double b = 0.0, c = 0.0;
-                for (int j = 0; j < neit.size(); ++j)
+                for (int j = 0; j < nn; ++j)
                 {
                     if (be[j])
                     {
@@ -590,52 +574,47 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v)
                     t->length = x;
                 }
             }
-            fm.push_back(ei);
-            vx.push_back(t);
+            fm[eid] = ei;
         }
 
         else // if e is not loop
         {
-            //vector<double> bx(neit.size());
-            //double * bx = new double[neit.size()];
-            for (int i = 0; i < neit.size(); ++i)
+            for (int i = 0; i < nn; ++i)
             {
                 if (be[i])
                 {
-                    double x = -neit[i]->length;
+                    double x = -nei[i]->target()->length;
                     bx[i] = x;
                 }
                 else
                 {
-                    double du = distance(neit[i], ue, dummyNode);
-                    double dv = distance(neit[i], ve, dummyNode);
+                    double du = distance(nei[i]->target(), ue, dummyNode);
+                    double dv = distance(nei[i]->target(), ve, dummyNode);
                     if (du <= dv) bx[i] = du;
                     else bx[i] = -dv - el;
                 }
             }
             double b = 0.0, c = 0.0;
-            for (int j = 0; j < neit.size(); ++j)
+            for (int j = 0; j < nn; ++j)
             {
                 b += 2 * ew[j] * bx[j];
                 c += ew[j] * bx[j] * bx[j];
             }
-            CTarget * t = new CTarget();
+            CTarget * t = vx[eid];
             t->edge = e;
             t->node = ue;
             t->length = 0.0;
             double x = 0;
             double mi = quadraticMininum(a, b, c, 0, el, x);
             t->length = x;
-            fm.push_back(mi);
-            vx.push_back(t);
-            //delete[] bx;
+            fm[eid] = mi;
         }
 
     }
 
     double fmm = fm[0];
     CTarget * vm = vx[0];
-    for (int i = 1; i < fm.size(); ++i)
+    for (int i = 1; i < graph->g.edgeNum(); ++i)
     {
         if (fm[i] < fmm)
         {
@@ -649,10 +628,6 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v)
     vt->node = vm->node;
     vt->length = vm->length;
 
-    for (int i = 0; i < vx.size(); ++i)
-    {
-        delete vx[i];
-    }
     return dv;
 }
 
@@ -761,15 +736,36 @@ int CGraphHarmonicMap::harmonicMap()
     for (CVertex * v : mesh->vertices())
     {
         vv.push_back(v);
-        v->bx() = new double[v->vertices().size()];
+        auto vr = v->vertices();
+        int nn = vr.size();
+        v->nn() = nn;
+        v->bx() = new double[nn];
+        v->be() = new short[nn];
+        v->bp() = new double[nn + 3];
+        v->fm() = new double[graph->g.edgeNum()];
+        v->vx() = new CTarget*[graph->g.edgeNum()];
+        for (int i = 0; i < graph->g.edgeNum(); ++i)
+        {
+            v->vx()[i] = new CTarget();
+        }
+        v->neit() = new CTarget*[nn];
+        v->ew() = new double[nn];
+        v->ewsum() = 0;
+        for (int i = 0; i < nn; ++i)
+        {
+            v->neit()[i] = vr[i]->target();
+            v->ew()[i] = mesh->edge(v, vr[i])->weight();
+            v->ewsum() += v->ew()[i];
+        }
     }
+
     time_t start = time(NULL);
     int k = 0;
     while (k < 2000)
     {
         double err = 0;
         //random_shuffle(vv.begin(), vv.end());
-#pragma omp parallel for
+        #pragma omp parallel for
         for (int i = 0; i < vv.size(); ++i)
         {
             double d = calculateBarycenter(vv[i]);
@@ -808,6 +804,27 @@ int CGraphHarmonicMap::harmonicMap()
         ostringstream oss;
         oss << "uv=(" << x << " 0.43) target=(" << eid << " " << nid << " " << length << ")";
         v->string() = oss.str();
+    }
+
+    for (CVertex * v : mesh->vertices())
+    {
+        double * bx = v->bx();
+        delete[] bx;
+        short * be = v->be();
+        delete[] be;
+        double * bp = v->bp();
+        delete[] bp;
+        double * fm = v->fm();
+        delete[] fm;
+        
+        for (int i = 0; i < graph->g.edgeNum(); ++i)
+        {
+            delete v->vx()[i];
+        }
+        delete[] v->vx();
+
+        delete[] v->neit();
+        delete[] v->ew();
     }
 
     return 0;
