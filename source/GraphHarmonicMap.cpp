@@ -494,7 +494,6 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v)
     bool isfixed = v->fixed();
     if (isfixed) return 0.0;
 
-    vector<CVertex*> & nei = v->vertices();
     CTarget* * neit = v->neit();
     double * ew = v->ew();
     double a = v->ewsum();
@@ -1125,10 +1124,6 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
                 t->length = -y;
             }
         }
-        if (t->length > el1)
-        {
-            cerr << "initial map: vertex target out of edge" << endl;
-        }
         v->target() = t;
     }
     Cut cut3;
@@ -1140,7 +1135,6 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
         int id = c.first;
         auto cut = c.second;
         auto e = graph->g.edgeFromId(id);
-        //double el = graph->edgeLength[e];
         auto u = graph->g.u(e);
         auto v = graph->g.v(e);
         SmartGraph::Node n = u == node ? v : u;
@@ -1210,7 +1204,6 @@ int CGraphHarmonicMap::decompose()
 
     for (CVertex * v : mesh->vertices())
     {
-        //bool critical = false;
         bool isfixed = v->fixed();
         CTarget * vt = v->target();
         SmartGraph::Edge e = vt->edge;
@@ -1415,9 +1408,6 @@ int CGraphHarmonicMap::decompose()
 bool CGraphHarmonicMap::hasCriticalPoint(CFace * f)
 {
     CHalfEdge * he = f->halfedge();
-    //CVertex * v0 = he->source();
-    //CVertex * v1 = he->target();
-    //CVertex * v2 = he->he_next()->target();
 
     CEdge * e0 = he->edge();
     CEdge * e1 = he->next()->edge();
