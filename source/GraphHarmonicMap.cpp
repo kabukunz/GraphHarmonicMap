@@ -494,7 +494,7 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v)
     bool isfixed = v->fixed();
     if (isfixed) return 0.0;
 
-    vector<CEdge*> nei = v->edges();
+    vector<CEdge*> & nei = v->edges();
     vector<CTarget*> neit;
     neit.reserve(nei.size());
     vector<double> ew;
