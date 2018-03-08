@@ -27,7 +27,7 @@ cmake ..
 ```
 You can also generator for certain toolchains, for example on macOS:
 ```
-cmake .. -G XCode
+cmake .. -G Xcode
 ```
 or generate with x64 toolchains (on Windows default is x86, which is not recommended by me)
 ```
@@ -48,11 +48,11 @@ or build "install" project in IDE, binary will be installed in ~/bin, where ~ is
 # Use
 * first compute harmonic map to graph
 ```
-./bin/GraphHarmonic harmonic data/eight.m data/eight.graph data/eight.cut data/eight.harmonic.m
+./bin/GraphHarmonic -harmonic data/eight.m data/eight.graph data/eight.harmonic.m
 ```
 * then decompose surface into cylinders
 ```
-./bin/GraphHarmonic decompose data/eight.harmonic.m data/eight.graph data/eight.cut data/eight.harmonic.2.m
+./bin/GraphHarmonic -decompose data/eight.harmonic.m data/eight.graph data/eight.harmonic.2.m
 ```
 * visualize
 ```

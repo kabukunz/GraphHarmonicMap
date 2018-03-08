@@ -17,8 +17,7 @@ public:
     CGraph();
     ~CGraph();
 
-    int read(string filename);
-    int write(string filename);
+    SmartGraph::Edge addEdge(int i, int j, double length);
 
     void calculateNodeDistance();
     double distance(const SmartGraph::Node & n1, const SmartGraph::Node & n2);
@@ -29,6 +28,8 @@ public:
     SmartGraph::EdgeMap<double> edgeLength;
     SmartGraph::EdgeMap<int> edgeSign;
     SmartGraph::NodeMap<int> nodeValence;
+
+    friend ostream& operator<<(ostream& os, CGraph& graph);
 
 private:
     map<int, SmartGraph::Node> nodeMap;

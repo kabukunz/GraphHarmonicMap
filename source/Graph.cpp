@@ -15,61 +15,44 @@ CGraph::~CGraph()
     delete[] nodeDist;
 }
 
-int CGraph::read(string filename)
+
+SmartGraph::Edge CGraph::addEdge(int i, int j, double length)
 {
-    g.clear();
-    std::ifstream infile(filename);
-    if (!infile.good())
+    SmartGraph::Node ni = g.nodeFromId(i);
+    if(!g.valid(ni))
     {
-        cout << "can't open graph file: " << filename << endl;
-        exit(-1);
-        return -1;
+        ni = g.addNode();
+        nodeMap[i] = ni;
+        nodeValence[ni] = 0;
     }
-    string line;
-
-    while (getline(infile, line))
+    SmartGraph::Node nj = g.nodeFromId(j);
+    if(!g.valid(nj))
     {
-        std::istringstream iss(line);
-        string type;
-        int id;
-        double x, y;
-        int i, j;
-        iss >> type;
-        if (type[0] == '#') continue;
-
-        if (type == "Node")
-        {
-            iss >> id >> x >> y;
-            auto n = g.addNode();
-            nodeMap[id] = n;
-            nodeValence[n] = 0;
-        }
-        if (type == "Arc")
-        {
-            double l;
-            iss >> id >> i >> j >> l;
-            auto arc = g.addEdge(nodeMap[i], nodeMap[j]);
-            edgeLength[arc] = l;
-            nodeValence[nodeMap[i]] += 1;
-            nodeValence[nodeMap[j]] += 1;
-        }
+        nj = g.addNode();
+        nodeMap[j] = nj;
+        nodeValence[nj] = 0;
     }
-    return 0;
+    SmartGraph::Edge edge = g.addEdge(ni, nj);
+    edgeLength[edge] = length;
+    nodeValence[ni] += 1;
+    nodeValence[nj] += 1;
+    
+    return edge;
 }
 
-int CGraph::write(string filename)
+ostream& operator<<(ostream& os, CGraph& graph)
 {
-    std::ofstream outfile(filename);
+    auto& g = graph.g;
     for (SmartGraph::NodeIt n(g); n != INVALID; ++n)
     {
-        outfile << g.id(n) << ": ";
+        os << g.id(n) << ": ";
         for (SmartGraph::OutArcIt a(g, n); a != INVALID; ++a)
         {
-            outfile << g.id(g.target(a)) << ", ";
+            os << g.id(g.target(a)) << ", ";
         }
-        outfile << endl;
+        os << endl;
     }
-    return 0;
+    return os;
 }
 
 double CGraph::distance(const SmartGraph::Node & n1, const SmartGraph::Node & n2)

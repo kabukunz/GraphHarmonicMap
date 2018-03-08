@@ -27,49 +27,51 @@ CGraphHarmonicMap::~CGraphHarmonicMap()
 
 int CGraphHarmonicMap::setMesh(const string & filename)
 {
-    mesh->read_m(filename.c_str());
-    //mesh->prop("filename") = filename;
+    mesh->read_m(filename);
     return 0;
 }
 
 /*
 * read a target graph, place source vertex randomly on the graph: arc is chosen randomly, always place target at the middle of each arc
 */
-int CGraphHarmonicMap::setGraph(const string & graphfilename, const string & cutfilename = string())
+int CGraphHarmonicMap::setGraph(const string & graphfilename)
 {
-    graph->read(graphfilename);
-
     if (!mesh)
     {
         cerr << "read mesh first" << endl;
         exit(-1);
     }
 
-    ifstream cutfile(cutfilename);
-    if (cutfile.good())
+    ifstream graphfile(graphfilename);
+    if (graphfile.good())
     {
         string line;
-        while (getline(cutfile, line))
+        while (getline(graphfile, line))
         {
             std::istringstream iss(line);
             string type;
-            int cid, sign;
+            int cid, x, y;
+            double len;
             iss >> type;
-            if (type[0] == '#') continue;
+            if (type.length() == 0 || type[0] == '#') continue;
             if (type == "Cut")
             {
-                iss >> cid >> sign;
-                auto edge = graph->g.edgeFromId(cid);
-                graph->edgeSign[edge] = sign;
+                iss >> cid >> x >> y >> len;
+                auto edge = graph->addEdge(x, y, len);
                 vector<CVertex*> cut;
-                int vid = 0;
+                int vid = -1;
                 while (iss >> vid)
                 {
                     cut.push_back(mesh->vertex(vid));
                 }
+                if(cut.empty())
+                {
+                    cerr << "cut can not be empty" << endl;
+                    exit(-1);
+                }
                 cuts[cid] = cut;
             }
-            if (type == "Seed")
+            if (type == "Pants")
             {
                 int sid, seed;
                 iss >> sid >> seed;
@@ -79,9 +81,8 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename, const string & cut
     }
     else
     {
-        cout << "can't open cut file: " << cutfilename << endl;
+        cout << "can't open graph file: " << graphfilename << endl;
         exit(-1);
-        return -1;
     }
 
     for (CVertex * v : mesh->vertices())
@@ -832,6 +833,10 @@ int CGraphHarmonicMap::harmonicMap()
 
 int CGraphHarmonicMap::traceAllPants()
 {
+    for (CVertex * v : mesh->vertices())
+    {
+        v->pants() = -1;
+    }
     for (auto s : seeds)
     {
         int id = s.first;
@@ -839,6 +844,14 @@ int CGraphHarmonicMap::traceAllPants()
         vector<CVertex*> pants;
         tracePants(id, seed, pants);
         pantss[id] = pants;
+    }
+    for (CVertex * v : mesh->vertices())
+    {
+        if(v->pants() == -1 && !v->cut())
+        {
+            cout << v->id() << endl;
+        }
+        assert(v->pants() != -1 || v->cut());
     }
     return 0;
 }
@@ -891,19 +904,19 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
     // if there is a loop
     if (edges[0] == edges[1])
     {
-        embedPants(node, pants, edges[0], edges[1], edges[2]);
+        return embedPants(node, pants, edges[0], edges[1], edges[2]);
     }
     else if (edges[0] == edges[2])
     {
-        embedPants(node, pants, edges[0], edges[2], edges[1]);
+        return embedPants(node, pants, edges[0], edges[2], edges[1]);
     }
     else if (edges[1] == edges[2])
     {
-        embedPants(node, pants, edges[1], edges[2], edges[0]);
+        return embedPants(node, pants, edges[1], edges[2], edges[0]);
     }
     else
     {
-        embedPants(node, pants, edges[0], edges[1], edges[2]);
+        return embedPants(node, pants, edges[0], edges[1], edges[2]);
     }
 
     return 0;
@@ -1144,6 +1157,11 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
             if (isfixed)
             {
                 CTarget * vt = vi->target();
+                if(!vt)
+                {
+                    cerr << "vertex has no target:" << vi->id() << endl;
+                    exit(-1);
+                }
                 vt->edge = e;
                 vt->node = n;
                 vt->length = 0;
@@ -1540,12 +1558,12 @@ int CGraphHarmonicMap::output(string filename)
     return 0;
 }
 
-int GraphHarmonicMap(string meshfilename, string graphfilename, string cutfilename, string outfilename, string options)
+int GraphHarmonicMap(string meshfilename, string graphfilename, string outfilename, string options)
 {
     CGraphHarmonicMap * map = new CGraphHarmonicMap();
 
     map->setMesh(meshfilename);
-    map->setGraph(graphfilename, cutfilename);
+    map->setGraph(graphfilename);
     if (options == "init")
     {
         map->initialMap("init");
@@ -1566,12 +1584,12 @@ int GraphHarmonicMap(string meshfilename, string graphfilename, string cutfilena
     return 0;
 }
 
-int Decompose(string meshfilename, string graphfilename, string cutfilename, string outfilename, string options)
+int Decompose(string meshfilename, string graphfilename, string outfilename, string options)
 {
     CGraphHarmonicMap * map = new CGraphHarmonicMap();
 
     map->setMesh(meshfilename);
-    map->setGraph(graphfilename, cutfilename);
+    map->setGraph(graphfilename);
     map->initialMap("continue");
 
     map->decompose();
@@ -1583,7 +1601,7 @@ int Decompose(string meshfilename, string graphfilename, string cutfilename, str
 
 int showUsage()
 {
-    cout << "usage: GraphHarmonicMap [harmonic|decompose] meshfilename graphfilename cutfilename outfilename [--options]" << endl;
+    cout << "usage: GraphHarmonicMap [-harmonic|-decompose] meshfilename graphfilename outfilename [--options]" << endl;
     return 0;
 }
 
@@ -1597,7 +1615,6 @@ int main(int argc, char * argv[])
     vector<int> ind;
     string meshfilename;
     string graphfilename;
-    string cutfilename;
     string outfilename;
     string options;
 
@@ -1614,30 +1631,27 @@ int main(int argc, char * argv[])
         }
     }
 
-    if (ind.size() < 4)
+    if (ind.size() < 3)
     {
         return showUsage();
     }
 
     meshfilename = string(argv[ind[0]]);
     graphfilename = string(argv[ind[1]]);
+
     if (ind.size() >= 3)
     {
-        cutfilename = string(argv[ind[2]]);
-    }
-    if (ind.size() >= 4)
-    {
-        outfilename = string(argv[ind[3]]);
+        outfilename = string(argv[ind[2]]);
     }
 
-    if (command == "harmonic")
+    if (command == "-harmonic")
     {
-        GraphHarmonicMap(meshfilename, graphfilename, cutfilename, outfilename, options);
+        GraphHarmonicMap(meshfilename, graphfilename, outfilename, options);
     }
 
-    if (command == "decompose")
+    if (command == "-decompose")
     {
-        Decompose(meshfilename, graphfilename, cutfilename, outfilename, options);
+        Decompose(meshfilename, graphfilename, outfilename, options);
     }
 
     return 0;

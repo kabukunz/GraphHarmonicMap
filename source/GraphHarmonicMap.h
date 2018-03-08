@@ -93,7 +93,7 @@ public:
     ~CGraphHarmonicMap();
 
     int setMesh(const string & filename);
-    int setGraph(const string & graphfilename, const string & cutfilename);
+    int setGraph(const string & graphfilename);
 
     int calculateEdgeLength();
     int calculateEdgeWeight();
