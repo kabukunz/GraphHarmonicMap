@@ -112,6 +112,7 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename)
         }
     }
     graph->calculateNodeDistance();
+
     return 0;
 }
 
@@ -790,17 +791,13 @@ int CGraphHarmonicMap::harmonicMap()
         int sign = 0;
         if (vt)
         {
-            //CPoint & p = v->point();
-            auto e = vt->edge;
-            sign = graph->edgeSign[e];
-            //double el = graph->edgeLength[e];
+            auto e = vt->edge;            
+            double el = graph->edgeLength[e];
             eid = graph->g.id(e);
             nid = graph->g.id(vt->node);
             length = vt->length;
             x = vt->length;
-            //if (x > el / 2.0) x = (el - x) * sign;
-            //else x = x * sign;
-            x = x * sign;
+            if (x > el / 2.0) x = (el - x);
         }
         ostringstream oss;
         oss << "uv=(" << x << " 0.43) target=(" << eid << " " << nid << " " << length << ")";
@@ -1554,7 +1551,7 @@ CVertex * CGraphHarmonicMap::locateCriticalPoint(CEdge * e)
 
 int CGraphHarmonicMap::output(string filename)
 {
-    mesh->write_m(filename.c_str());
+    mesh->write_m(filename);
     return 0;
 }
 

@@ -18,20 +18,17 @@ CGraph::~CGraph()
 
 SmartGraph::Edge CGraph::addEdge(int i, int j, double length)
 {
+    while (g.nodeNum() < std::max(i, j) + 1)
+    {
+        SmartGraph::Node node = g.addNode();
+        nodeValence[node] = 0;
+    }
     SmartGraph::Node ni = g.nodeFromId(i);
-    if(!g.valid(ni))
-    {
-        ni = g.addNode();
-        nodeMap[i] = ni;
-        nodeValence[ni] = 0;
-    }
+    nodeMap[i] = ni;
+    
     SmartGraph::Node nj = g.nodeFromId(j);
-    if(!g.valid(nj))
-    {
-        nj = g.addNode();
-        nodeMap[j] = nj;
-        nodeValence[nj] = 0;
-    }
+    nodeMap[j] = nj;
+    
     SmartGraph::Edge edge = g.addEdge(ni, nj);
     edgeLength[edge] = length;
     nodeValence[ni] += 1;
