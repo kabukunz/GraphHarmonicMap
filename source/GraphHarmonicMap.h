@@ -29,6 +29,7 @@ class CHVertex
     ADD_PROPERTY(double, x)
     ADD_PROPERTY(double, y)
     ADD_PROPERTY(bool, cut)
+	ADD_PROPERTY(int, cut_id)
     ADD_PROPERTY(bool, cut2)
     ADD_PROPERTY(int, pants)
     ADD_PROPERTY(double, u)
@@ -81,8 +82,16 @@ public:
 
 
 typedef map<int, vector<CVertex*>> Cut;
+typedef map<int, set<int>> CutMaps;
 typedef map<int, CVertex*> Seed;
 typedef map<int, vector<CVertex*>> Pants;
+
+//typedef map<int, ConnectedConponent> CC;
+//struct ConnectedConponent
+//{
+//	vector<CVertex*> verts;
+//	set<int> cut_ids;
+//};
 
 class CGraphHarmonicMap
 {
@@ -94,6 +103,7 @@ public:
 
     int setMesh(const string & filename);
     int setGraph(const string & graphfilename);
+	int setCuts(const string& cutsfilename);
 
     int calculateEdgeLength();
     int calculateEdgeWeight();
@@ -112,9 +122,11 @@ public:
 
     int traceAllPants();
     int tracePants(int id, CVertex * seed, vector<CVertex*> & pants);
+	//int tracePants(int id, CVertex* seed, ConnectedConponent& pants);
 
     int embedPants(SmartGraph::Node & node, vector<CVertex*> & pants);
     int embedPants(SmartGraph::Node & node, vector<CVertex*> & pants, SmartGraph::Edge & e0, SmartGraph::Edge & e1, SmartGraph::Edge & e2);
+	int embedPants(SmartGraph::Node& node, vector<CVertex*>& pants, vector<SmartGraph::Edge&> edges);
 
     int findNeighbors(vector<CVertex*> & cut, vector<CVertex*> & vs1, vector<CVertex*> & vs2);
 
@@ -138,6 +150,7 @@ private:
     Cut cuts;
     Seed seeds;
     Pants pantss;
+	CutMaps cms;
 
     CDynamicMesh * dmesh;
     CBoundary * boundary;

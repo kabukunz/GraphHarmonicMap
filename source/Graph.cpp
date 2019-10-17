@@ -113,3 +113,8 @@ int CGraph::colorize()
     }
     return 0;
 }
+
+int CGraph::saveGraph(string filename, map<int, vector<int>> cuts, map<int, vector<int>> pants)
+{
+	return 0;
+}

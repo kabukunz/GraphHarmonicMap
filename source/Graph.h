@@ -23,6 +23,7 @@ public:
     double distance(const SmartGraph::Node & n1, const SmartGraph::Node & n2);
 
     int colorize();
+	int saveGraph(string filename, map<int, vector<int>> cuts, map<int, vector<int>> pants);
 
     SmartGraph g;
     SmartGraph::EdgeMap<double> edgeLength;
