@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.0)
 
-if(${APPLE})
-    set(CMAKE_C_COMPILER "gcc-6")
-    set(CMAKE_CXX_COMPILER "g++-6")
-endif()
+# if(${APPLE})
+#     set(CMAKE_C_COMPILER "gcc-6")
+#     set(CMAKE_CXX_COMPILER "g++-6")
+# endif()
 
 project(GraphHarmonicMap)
 set (GraphHarmonicMap_VERSION_MAJOR 1)
