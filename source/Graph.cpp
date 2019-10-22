@@ -25,15 +25,15 @@ SmartGraph::Edge CGraph::addEdge(int i, int j, double length)
     }
     SmartGraph::Node ni = g.nodeFromId(i);
     nodeMap[i] = ni;
-    
+
     SmartGraph::Node nj = g.nodeFromId(j);
     nodeMap[j] = nj;
-    
+
     SmartGraph::Edge edge = g.addEdge(ni, nj);
     edgeLength[edge] = length;
     nodeValence[ni] += 1;
     nodeValence[nj] += 1;
-    
+
     return edge;
 }
 
@@ -52,7 +52,7 @@ ostream& operator<<(ostream& os, CGraph& graph)
     return os;
 }
 
-double CGraph::distance(const SmartGraph::Node & n1, const SmartGraph::Node & n2)
+double CGraph::distance(const SmartGraph::Node& n1, const SmartGraph::Node& n2)
 {
     int i = g.id(n1);
     int j = g.id(n2);
@@ -63,7 +63,7 @@ void CGraph::calculateNodeDistance()
 {
     SmartGraph::NodeMap<double> dist(g);
     auto dij = dijkstra(g, edgeLength).distMap(dist);
-    nodeDist = new double*[g.nodeNum()];
+    nodeDist = new double* [g.nodeNum()];
     for (int i = 0; i < g.nodeNum(); ++i)
     {
         nodeDist[i] = new double[g.nodeNum()];
@@ -116,5 +116,5 @@ int CGraph::colorize()
 
 int CGraph::saveGraph(string filename, map<int, vector<int>> cuts, map<int, vector<int>> pants)
 {
-	return 0;
+    return 0;
 }
