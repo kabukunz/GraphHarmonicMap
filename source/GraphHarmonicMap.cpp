@@ -210,6 +210,10 @@ int CGraphHarmonicMap::calculateEdgeWeight()
             double theta = inverse_cosine_law(e->length(), he_next->edge()->length(), he_prev->edge()->length());
             e->weight() += 0.5 / tan(theta);
         }
+        if (e->weight() < 0)
+        {
+            e->weight() = 0;
+        }
     }
     return 0;
 }
