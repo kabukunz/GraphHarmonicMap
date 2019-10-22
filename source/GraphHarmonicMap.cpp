@@ -832,14 +832,14 @@ int CGraphHarmonicMap::harmonicMap()
 
     time_t start = time(NULL);
     int k = 0;
-    while (k < 1)
+    while (k < 10000)
     {
         double err = 0;
         //random_shuffle(vv.begin(), vv.end());
 #pragma omp parallel for
         for (int i = 0; i < vv.size(); ++i)
         {
-            if (k<1 && vv[i]->cut()) continue;
+            if (k < 10000 && vv[i]->cut()) continue;
             double d = calculateBarycenter(vv[i]);
             if (d > err) err = d;
         }
@@ -1330,6 +1330,24 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
         double length = graph->edgeLength[e];
         auto& cut = cuts[eid];
         bool on = graph->nodeValence[n] == 1;
+        vector<CVertex*> vs1, vs2;
+        findNeighbors(cut, vs1, vs2);
+
+        // find two side neighbors of cut
+        for (auto v : vs1)
+        {
+            v->cut2() = true;
+            v->touched() = true;
+            v->target()->edge = e;
+            v->target()->length = on ? length : length / 2.0;
+        }
+        for (auto v : vs2)
+        {
+            v->cut2() = true;
+            v->touched() = true;
+            v->target()->edge = e;
+            v->target()->length = on ? length : length / 2.0;
+        }
         for (auto v : cut)
         {
             v->x() = on ? length : length / 2.0;
