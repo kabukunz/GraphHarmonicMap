@@ -8,7 +8,7 @@
 //using namespace MeshLib;
 
 #ifndef EPS
-#define EPS 1e-8
+#define EPS 1e-10
 #endif // !EPS
 
 #define ADD_PROPERTY(T, x) \
@@ -74,12 +74,11 @@ using CHalfEdge = CMesh::CHalfEdge;
 class CTarget
 {
 public:
+    CTarget():length(0.0) {}
     SmartGraph::Edge edge;
     SmartGraph::Node node;
     double length;
 };
-
-
 
 typedef map<int, vector<CVertex*>> Cut;
 typedef map<int, set<int>> CutMaps;
@@ -126,7 +125,7 @@ public:
 
     int embedPants(SmartGraph::Node& node, vector<CVertex*>& pants);
     int embedPants(SmartGraph::Node& node, vector<CVertex*>& pants, SmartGraph::Edge& e0, SmartGraph::Edge& e1, SmartGraph::Edge& e2);
-    int embedPants(SmartGraph::Node& node, vector<CVertex*>& pants, vector<SmartGraph::Edge&> edges);
+    int embedPants(SmartGraph::Node& node, vector<CVertex*>& pants, vector<SmartGraph::Edge>& edges);
 
     int findNeighbors(vector<CVertex*>& cut, vector<CVertex*>& vs1, vector<CVertex*>& vs2);
 

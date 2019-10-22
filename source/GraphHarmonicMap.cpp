@@ -832,13 +832,14 @@ int CGraphHarmonicMap::harmonicMap()
 
     time_t start = time(NULL);
     int k = 0;
-    while (k < 2000)
+    while (k < 1)
     {
         double err = 0;
         //random_shuffle(vv.begin(), vv.end());
 #pragma omp parallel for
         for (int i = 0; i < vv.size(); ++i)
         {
+            if (k<1 && vv[i]->cut()) continue;
             double d = calculateBarycenter(vv[i]);
             if (d > err) err = d;
         }
@@ -932,14 +933,14 @@ int CGraphHarmonicMap::traceAllPants()
                 int x = *iter;
                 advance(iter, 1);
                 int y = *iter;
-                graph->addEdge(x, y, 1.0);
+                graph->addEdge(x, y, 1);
             }
             else if (cut_connected_pants.size() == 1)
             {
                 auto iter = cut_connected_pants.begin();
                 advance(iter, 0);
                 int x = *iter;
-                graph->addEdge(x, x, 1.0);
+                graph->addEdge(x, x, 1);
             }
             else
             {
@@ -1041,7 +1042,7 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
     }
     else
     {
-
+        return embedPants(node, pants, edges);
     }
 
 
@@ -1301,255 +1302,77 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
 }
 
 
-//int CGraphHarmonicMap::embedPants(SmartGraph::Node& node, vector<CVertex*>& pants, vector<SmartGraph::Edge&> edges)
-//{
-//
-//	// renumber pants vertex
-//	int k = 0;
-//	for (auto v : pants)
-//	{
-//		v->index() = k++;
-//	}
-//
-//	if (e0 == e1)
-//	{
-//		int eid = graph->g.id(e0);
-//		double length = graph->edgeLength[e0];
-//		auto& cut = cuts[eid];
-//		vector<CVertex*> vs1, vs2;
-//		findNeighbors(cut, vs1, vs2);
-//
-//		// find two side neighbors of cut
-//		for (auto v : vs1)
-//		{
-//			v->x() = -length / 2.0;
-//			v->y() = 0.0;
-//			v->cut2() = true;
-//			v->touched() = true;
-//		}
-//		for (auto v : vs2)
-//		{
-//			v->x() = 0.0;
-//			v->y() = -length / 2.0;
-//			v->cut2() = true;
-//			v->touched() = true;
-//		}
-//		for (auto v : cut)
-//		{
-//			v->x() = -length / 2.0;
-//			v->y() = -length / 2.0;
-//			v->cut2() = true;
-//			v->touched() = true;
-//		}
-//	}
-//	else
-//	{
-//		auto u0 = graph->g.u(e0);
-//		auto v0 = graph->g.v(e0);
-//		if (u0 != node && v0 != node)
-//		{
-//			cerr << "edge does not connect to node, graph configuration is not correct" << endl;
-//			return -1;
-//		}
-//		SmartGraph::Node n0 = u0 == node ? v0 : u0;
-//
-//		int e0id = graph->g.id(e0);
-//		auto& cut0 = cuts[e0id];
-//		double l0 = graph->edgeLength[e0];
-//		bool on0 = graph->nodeValence[n0] == 1;
-//		for (auto v : cut0)
-//		{
-//			v->x() = on0 ? -l0 : -l0 / 2.0;
-//			v->y() = 0.0;
-//			v->cut2() = true;
-//			v->touched() = true;
-//		}
-//
-//		auto u1 = graph->g.u(e1);
-//		auto v1 = graph->g.v(e1);
-//		if (u1 != node && v1 != node)
-//		{
-//			cerr << "edge does not connect to node, graph configuration is not correct" << endl;
-//			return -1;
-//		}
-//		SmartGraph::Node n1 = u1 == node ? v1 : u1;
-//
-//		int e1id = graph->g.id(e1);
-//		auto& cut1 = cuts[e1id];
-//		double l1 = graph->edgeLength[e1];
-//		bool on1 = graph->nodeValence[n1] == 1;
-//		for (auto v : cut1)
-//		{
-//			v->x() = 0.0;
-//			v->y() = on1 ? -l1 : -l1 / 2.0;
-//			v->cut2() = true;
-//			v->touched() = true;
-//		}
-//	}
-//
-//	auto u2 = graph->g.u(e2);
-//	auto v2 = graph->g.v(e2);
-//
-//	if (u2 != node && v2 != node)
-//	{
-//		cerr << "edge does not connect to node, graph configuration is not correct" << endl;
-//		return -1;
-//	}
-//
-//	SmartGraph::Node n2 = u2 == node ? v2 : u2;
-//
-//	int eid = graph->g.id(e2);
-//	double length = graph->edgeLength[e2];
-//	auto& cut = cuts[eid];
-//	bool on2 = graph->nodeValence[n2] == 1;
-//	for (auto v : cut)
-//	{
-//		v->x() = on2 ? length : length / 2.0;
-//		v->y() = on2 ? length : length / 2.0;
-//		v->cut2() = true;
-//		v->touched() = true;
-//	}
-//
-//	// compute harmonic map
-//	typedef Eigen::Triplet<double> T;
-//	vector<T> triplets, tripletsb;
-//	int nv = pants.size();
-//	triplets.reserve(nv * 2);
-//	Eigen::SparseMatrix<double> A(nv, nv);
-//	Eigen::SparseMatrix<double> B(nv, nv);
-//	Eigen::VectorXd x, y;
-//	Eigen::VectorXd bx, by;
-//	bx.setZero(nv, 1);
-//	by.setZero(nv, 1);
-//
-//	for (auto v : pants)
-//	{
-//		int id = v->index();
-//		bool isCut = v->cut();
-//		bool isCut2 = v->cut2();
-//		bool c = isCut || isCut2;
-//		if (!c)
-//		{
-//			for (CVertex* v2 : v->vertices())
-//			{
-//				int id2 = v2->index();
-//				bool isCut = v2->cut();
-//				bool isCut2 = v2->cut2();
-//				bool c2 = isCut || isCut2;
-//				CEdge* e = mesh->edge(v, v2);
-//				double w = e->weight();
-//				triplets.push_back(T(id, id, -w));
-//				if (!c2)
-//				{
-//					triplets.push_back(T(id, id2, w));
-//				}
-//				else
-//				{
-//					tripletsb.push_back(T(id, id2, w));
-//				}
-//			}
-//		}
-//		else
-//		{
-//			triplets.push_back(T(id, id, 1));
-//			bx[id] = v->x();
-//			by[id] = v->y();
-//		}
-//	}
-//
-//
-//	A.setFromTriplets(triplets.begin(), triplets.end());
-//	A.finalize();
-//
-//	B.setFromTriplets(tripletsb.begin(), tripletsb.end());
-//	B.finalize();
-//
-//	bx -= B * bx;
-//	by -= B * by;
-//
-//	Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
-//	solver.compute(A);
-//	if (solver.info() != Eigen::Success)
-//	{
-//		cerr << "waring: Eigen decomposition failed" << endl;
-//	}
-//	x = solver.solve(bx);
-//	y = solver.solve(by);
-//
-//	for (auto v : pants)
-//	{
-//		int id = v->index();
-//		double xi = x[id];
-//		double yi = y[id];
-//		v->x() = xi;
-//		v->y() = yi;
-//	}
-//
-//	double el1 = graph->edgeLength[e1];
-//	for (auto v : pants)
-//	{
-//		double x = v->x();
-//		double y = v->y();
-//		CTarget* t = new CTarget();
-//		t->node = node;
-//		if (x >= 0 && y >= 0)
-//		{
-//			t->edge = e2;
-//			t->length = x < y ? x : y;
-//		}
-//		else if (x < y)
-//		{
-//			t->edge = e0;
-//			t->length = -x;
-//		}
-//		else if (y <= x)
-//		{
-//			t->edge = e1;
-//			if (e0 == e1)
-//			{
-//				t->length = el1 + y;
-//			}
-//			else
-//			{
-//				t->length = -y;
-//			}
-//		}
-//		v->target() = t;
-//	}
-//	Cut cut3;
-//	cut3[graph->g.id(e0)] = cuts[graph->g.id(e0)];
-//	cut3[graph->g.id(e1)] = cuts[graph->g.id(e1)];
-//	cut3[graph->g.id(e2)] = cuts[graph->g.id(e2)];
-//	for (auto c : cut3)
-//	{
-//		int id = c.first;
-//		auto cut = c.second;
-//		auto e = graph->g.edgeFromId(id);
-//		auto u = graph->g.u(e);
-//		auto v = graph->g.v(e);
-//		SmartGraph::Node n = u == node ? v : u;
-//		for (auto vi : cut)
-//		{
-//			bool isfixed = vi->fixed();
-//			if (isfixed)
-//			{
-//				CTarget* vt = vi->target();
-//				if (!vt)
-//				{
-//					cerr << "vertex has no target:" << vi->id() << endl;
-//					exit(-1);
-//				}
-//				vt->edge = e;
-//				vt->node = n;
-//				vt->length = 0;
-//				vi->target() = vt;
-//			}
-//
-//		}
-//	}
-//
-//	return 0;
-//}
+int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pants, vector<SmartGraph::Edge>& edges)
+{ 
+    for (auto v : pants)
+    {
+        CTarget* t = new CTarget();
+        t->node = node;
+        t->length = 0.0;
+        t->edge = edges[0];
+        v->target() = t;
+    }
+
+    for (auto e : edges)
+    {
+        auto u = graph->g.u(e);
+        auto v = graph->g.v(e);
+
+        if (u != node && v != node)
+        {
+            cerr << "edge does not connect to node, graph configuration is not correct" << endl;
+            return -1;
+        }
+
+        SmartGraph::Node n = u == node ? v : u;
+
+        int eid = graph->g.id(e);
+        double length = graph->edgeLength[e];
+        auto& cut = cuts[eid];
+        bool on = graph->nodeValence[n] == 1;
+        for (auto v : cut)
+        {
+            v->x() = on ? length : length / 2.0;
+            v->y() = on ? length : length / 2.0;
+            v->cut2() = true;
+            v->touched() = true;
+            v->target()->edge = e;
+            v->target()->length = on ? length : length / 2.0;
+        }
+    }
+
+    Cut cuts_n;
+    for (auto e : edges)
+        cuts_n[graph->g.id(e)] = cuts[graph->g.id(e)];
+    for (auto c : cuts_n)
+    {
+        int id = c.first;
+        auto cut = c.second;
+        auto e = graph->g.edgeFromId(id);
+        auto u = graph->g.u(e);
+        auto v = graph->g.v(e);
+        SmartGraph::Node n = u == node ? v : u;
+        for (auto vi : cut)
+        {
+            bool isfixed = vi->fixed();
+            if (isfixed)
+            {
+                CTarget* vt = vi->target();
+                if (!vt)
+                {
+                    cerr << "vertex has no target:" << vi->id() << endl;
+                    exit(-1);
+                }
+                vt->edge = e;
+                vt->node = n;
+                vt->length = 0;
+                vi->target() = vt;
+            }
+        }
+    }
+
+    return 0;
+}
 
 int CGraphHarmonicMap::findNeighbors(vector<CVertex*> & cut, vector<CVertex*> & vs1, vector<CVertex*> & vs2)
 {
