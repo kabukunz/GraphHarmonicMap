@@ -93,10 +93,17 @@ endif()
 #endif()
 #link_directories(third-party/lemon)
 
-add_executable(GraphHarmonicMap 
-    source/GraphHarmonicMap.cpp
-    source/Graph.cpp
+set(headers
+source/Graph.h
+source/GraphHarmonicMap.h
 )
+
+set(sources
+source/Graph.cpp
+source/GraphHarmonicMap.cpp
+)
+
+add_executable(GraphHarmonicMap ${sources} ${headers})
 set_property(TARGET GraphHarmonicMap PROPERTY CXX_STANDARD 14)
 set_property(TARGET GraphHarmonicMap PROPERTY CXX_STANDARD_REQUIRED ON)
 
