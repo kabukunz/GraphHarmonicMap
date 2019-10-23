@@ -38,6 +38,7 @@ class CHVertex
     ADD_PROPERTY(CTarget**, neit)
     ADD_PROPERTY(double*, ew)
     ADD_PROPERTY(double, ewsum)
+    ADD_PROPERTY(double, lambda)
     ADD_PROPERTY(double*, bx)
     ADD_PROPERTY(short*, be)
     ADD_PROPERTY(double*, bp)
@@ -109,6 +110,8 @@ public:
     double distance(CTarget * x, SmartGraph::Node n);
 
     double calculateBarycenter(CVertex * v);
+    double calculateHarmonicEnergy(CVertex * v);
+    double calculateHarmonicEnergy();
 
     int initialMap(string method = string("init"));
     int harmonicMap();

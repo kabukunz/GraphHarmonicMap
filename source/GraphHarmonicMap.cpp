@@ -482,12 +482,11 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v)
     bool isfixed = v->fixed();
     if (isfixed) return 0.0;
 
+    int nn = v->nn();
     CTarget* * neit = v->neit();
     double * ew = v->ew();
-    double lambda = 1.0;
-    double a = v->ewsum() + lambda;
+    double a = v->ewsum() + v->lambda();
     double vl = v->target()->length;
-    int nn = v->nn();
     SmartGraph::Node dummyNode;
     double * bx = v->bx();
     short  * be = v->be();
@@ -556,8 +555,8 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v)
                     b += 2 * ew[j] * bx[j];
                     c += ew[j] * bx[j] * bx[j];
                 }
-                b -= 2 * lambda * vl;
-                c += lambda * vl * vl;
+                b -= 2 * v->lambda() * vl;
+                c += v->lambda() * vl * vl;
                 double x = 0;
                 double mi = quadraticMininum(a, b, c, x0, x1, x);
                 if (mi < ei)
@@ -592,8 +591,8 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v)
                 b += 2 * ew[j] * bx[j];
                 c += ew[j] * bx[j] * bx[j];
             }
-            b -= 2 * lambda * vl;
-            c += lambda * vl * vl;
+            b -= 2 * v->lambda() * vl;
+            c += v->lambda() * vl * vl;
             CTarget * t = vx[eid];
             t->edge = e;
             t->node = ue;
@@ -623,6 +622,31 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v)
     vt->length = vm->length;
 
     return dv;
+}
+
+double CGraphHarmonicMap::calculateHarmonicEnergy(CVertex * v)
+{
+    double energy = 0.0;
+    int nn = v->nn();
+    CTarget * vt = v->target();
+    CTarget ** neit = v->neit();
+    double * ew = v->ew();
+    for (int i = 0; i < nn; ++i)
+    {
+        double di = distance(vt, neit[i]);
+        energy += ew[i] * di * di;
+    }
+    return energy;
+}
+
+double CGraphHarmonicMap::calculateHarmonicEnergy()
+{
+    double energy = 0.0;
+    for (CVertex * v : mesh->vertices())
+    {
+        energy += calculateHarmonicEnergy(v);
+    }
+    return energy;
 }
 
 /*
@@ -748,53 +772,64 @@ int CGraphHarmonicMap::harmonicMap()
         v->neit() = new CTarget*[nn];
         v->ew() = new double[nn];
         v->ewsum() = 0;
+        v->lambda() = 0.0;
         for (int i = 0; i < nn; ++i)
         {
             v->neit()[i] = vr[i]->target();
             v->ew()[i] = mesh->edge(v, vr[i])->weight();
+            if (v->ew()[i] < 0)
+            {
+                v->lambda() = 0;
+            }
             v->ewsum() += v->ew()[i];
         }
     }
 
-    time_t start = time(NULL);
+    clock_t start = clock();
     int mid = -1;
     int k = 0;
+    double pre_energy = calculateHarmonicEnergy();
     while (k < 10)
     {
-        double err = 0;
+#ifndef _DEBUG
 #pragma omp parallel for
+#endif
         for (int i = 0; i < vv.size(); ++i)
         {
             if (vv[i]->cut() || vv[i]->cut2()) continue;
             double d = calculateBarycenter(vv[i]);
-            if (d > err)
-            {
-                err = d;
-                mid = i;
-            }
         }
         ++k;
     }
-    while (k < 2000)
+    double post_energy = calculateHarmonicEnergy();
+    cout << "#" << k << ": energy decreased = " << pre_energy - post_energy << endl;
+    while (k <= 2000)
     {
         double err = 0;
         //random_shuffle(vv.begin(), vv.end());
+        double pre_energy = 0.0;
+        if (k % 100 == 0)
+        {
+            pre_energy = calculateHarmonicEnergy();
+        }
+#ifndef _DEBUG
 #pragma omp parallel for
+#endif
         for (int i = 0; i < vv.size(); ++i)
         {
             double d = calculateBarycenter(vv[i]);
-            if (d > err)
-            {
-                err = d;
-                mid = i;
-            }
         }
-        if (k % 100 == 0) cout << "#" << k << ": " << err << " " << mid << endl;
-        if (err < EPS) break;
+        double post_energy = 0.0;
+        if (k % 100 == 0)
+        {
+            post_energy = calculateHarmonicEnergy();
+            cout << "#" << k << ": energy decreased = " << pre_energy - post_energy << endl;
+            if (abs(pre_energy - post_energy) < EPS) break;
+        }
         ++k;
     }
-    time_t finish = time(NULL);
-    cout << "elapsed time is " << (finish - start) << "s" << endl;
+    clock_t finish = clock();
+    cout << "elapsed time is " << (finish - start) << "ms" << endl;
 
     for (CVertex * v : mesh->vertices())
     {
