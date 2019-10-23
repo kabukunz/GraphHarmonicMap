@@ -69,6 +69,7 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename)
                     exit(-1);
                 }
                 cuts[cid] = cut;
+                wms[cid] = len;
             }
             if (type == "Pants")
             {
@@ -862,14 +863,14 @@ int CGraphHarmonicMap::traceAllPants()
                 int x = *iter;
                 advance(iter, 1);
                 int y = *iter;
-                graph->addEdge(x, y, 1.0);
+                graph->addEdge(x, y, wms[cut_id]);
             }
             else if (cut_connected_pants.size() == 1)
             {
                 auto iter = cut_connected_pants.begin();
                 advance(iter, 0);
                 int x = *iter;
-                graph->addEdge(x, x, 1.0);
+                graph->addEdge(x, x, wms[cut_id]);
             }
             else
             {
@@ -1271,7 +1272,7 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
                 v->cut2() = true;
                 v->touched() = true;
                 v->target()->edge = e;
-                v->target()->length = on ? length : length * 0.55;
+                v->target()->length = on ? length : length * 0.6;
             }
         }
         for (auto v : vs2)
@@ -1281,7 +1282,7 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
                 v->cut2() = true;
                 v->touched() = true;
                 v->target()->edge = e;
-                v->target()->length = on ? length : length * 0.45;
+                v->target()->length = on ? length : length * 0.4;
             }
         }
         for (auto v : cut)
@@ -1337,7 +1338,7 @@ int CGraphHarmonicMap::findNeighbors(vector<CVertex*> & cut, vector<CVertex*> & 
         CHalfEdge * he0 = e->halfedge(0);
         CHalfEdge * he1 = e->halfedge(1);
         CHalfEdge * he = NULL;
-        if (he0->source() == v0 && he0->target() == v1)  he = he0;
+        if (he0 && he0->source() == v0 && he0->target() == v1)  he = he0;
         if (he1 && he1->source() == v0 && he1->target() == v1) he = he1;
         if (!he)
         {
@@ -1345,7 +1346,10 @@ int CGraphHarmonicMap::findNeighbors(vector<CVertex*> & cut, vector<CVertex*> & 
             return -1;
         }
         vs1.push_back(he->next()->target());
-        vs2.push_back(he->dual()->next()->target());
+        if (he->dual())
+        {
+            vs2.push_back(he->dual()->next()->target());
+        }
     }
     return 0;
 }

@@ -8,7 +8,7 @@
 //using namespace MeshLib;
 
 #ifndef EPS
-#define EPS 1e-8
+#define EPS 1e-6
 #endif // !EPS
 
 #define ADD_PROPERTY(T, x) \
@@ -83,6 +83,7 @@ public:
 
 typedef map<int, vector<CVertex*>> Cut;
 typedef map<int, set<int>> CutMaps;
+typedef map<int, double> WeightMaps;
 typedef map<int, CVertex*> Seed;
 typedef map<int, vector<CVertex*>> Pants;
 
@@ -142,6 +143,7 @@ private:
     Seed seeds;
     Pants pantss;
     CutMaps cms;
+    WeightMaps wms;
 
     CDynamicMesh * dmesh;
     CBoundary * boundary;
