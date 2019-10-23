@@ -854,6 +854,7 @@ int CGraphHarmonicMap::harmonicMap()
         for (auto w : wms)
             max_weight = max(max_weight, w.second);
         oss << "uv=(" << x / max_weight << " 0.43) target=(" << eid << " " << nid << " " << length << ")";
+        v->x() = x / max_weight;
         v->string() = oss.str();
     }
 
@@ -1805,6 +1806,50 @@ int CGraphHarmonicMap::output(string filename)
     return 0;
 }
 
+int CGraphHarmonicMap::outputObj(string filename)
+{
+    // output mtl file for texture mapping
+    auto pos = filename.find(".obj");
+    std::fstream os_mtl(filename.substr(0, pos) + ".mtl", std::fstream::out);
+    if (os_mtl.fail())
+    {
+        std::cerr << "error in opening file " << filename << std::endl;
+        return -1;
+    }
+
+    os_mtl << "newmtl material0" << endl;
+    os_mtl << "Ka 0 0 0" << endl;
+    os_mtl << "Ks 0 0 0" << endl;
+    os_mtl << "map_Kd " << filename.substr(0, pos) + ".png" << endl;
+
+    // output obj file
+    std::fstream os(filename, std::fstream::out);
+    if (os.fail())
+    {
+        std::cerr << "error in opening file " << filename << std::endl;
+        return -1;
+    }
+
+    os << "mtllib " << filename.substr(0, pos) + ".mtl" << endl;
+
+    for (CVertex* v : mesh->vertices())
+    {
+        os << "v " << v->point() << endl;
+        os << "vt " << v->x() << " 0.43" << endl;
+    }
+
+    for (CFace* f : mesh->faces())
+    {
+        os << "f";
+        for (CVertex* v : f->vertices())
+        {
+            os << " " << v->id() << "/" << v->id();
+        }
+        os << endl;
+    }
+    return 0;
+}
+
 int CGraphHarmonicMap::outputGraph(const string & filename)
 {
     std::ofstream ofs(filename);
@@ -1839,6 +1884,7 @@ int GraphHarmonicMap(string meshfilename, string graphfilename, string outfilena
     map->harmonicMap();
 
     map->output(outfilename);
+    map->outputObj(outfilename + ".obj");
 
     return 0;
 }
