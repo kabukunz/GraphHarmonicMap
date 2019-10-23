@@ -28,6 +28,7 @@ CGraphHarmonicMap::~CGraphHarmonicMap()
 int CGraphHarmonicMap::setMesh(const string & filename)
 {
     mesh->read_m(filename);
+    findMeshBoundaries();
     return 0;
 }
 
@@ -1401,6 +1402,46 @@ int CGraphHarmonicMap::findNeighbors(vector<CVertex*> & cut, vector<CVertex*> & 
             vs2.push_back(he->dual()->next()->target());
         }
     }
+    return 0;
+}
+
+int CGraphHarmonicMap::findMeshBoundaries()
+{
+    size_t nv = mesh->num_vertices();
+    size_t nf = mesh->num_faces();
+
+    for (auto v : mesh->vertices())
+        v->boundary() = false;
+
+    Eigen::SparseMatrix<int> am;
+    vector<Eigen::Triplet<int>> am_triplets;
+    am_triplets.reserve(nf * 6);
+    for (auto f : mesh->faces())
+    {
+        for (auto he : f->halfedges())
+        {
+            int vi = he->source()->id();
+            int vj = he->target()->id();
+            am_triplets.push_back({ vi, vj, 1 });
+            am_triplets.push_back({ vj, vi, 1 });
+        }
+    }
+
+    am.resize(nv, nv);
+    am.setFromTriplets(am_triplets.begin(), am_triplets.end());
+
+    for (auto k = 0; k < am.outerSize(); ++k)
+    {
+        for (Eigen::SparseMatrix<int>::InnerIterator it(am, k); it; ++it)
+        {
+            if (it.value() == 1)
+            {
+                mesh->vertex(it.row())->boundary() = true;
+                mesh->vertex(it.col())->boundary() = true;
+            }
+        }
+    }
+
     return 0;
 }
 

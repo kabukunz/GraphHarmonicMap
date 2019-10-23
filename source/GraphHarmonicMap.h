@@ -33,6 +33,7 @@ class CHVertex
     ADD_PROPERTY(bool, cut2)
     ADD_PROPERTY(int, pants)
     ADD_PROPERTY(double, u)
+    ADD_PROPERTY(bool, boundary)
 
     ADD_PROPERTY(int, nn)
     ADD_PROPERTY(CTarget**, neit)
@@ -124,6 +125,7 @@ public:
     int embedPants(SmartGraph::Node & node, vector<CVertex*> & pants, vector<SmartGraph::Edge> & edges);
 
     int findNeighbors(vector<CVertex*> & cut, vector<CVertex*> & vs1, vector<CVertex*> & vs2);
+    int findMeshBoundaries();
 
     void test();
 
