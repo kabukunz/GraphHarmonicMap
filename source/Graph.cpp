@@ -25,15 +25,15 @@ SmartGraph::Edge CGraph::addEdge(int i, int j, double length)
     }
     SmartGraph::Node ni = g.nodeFromId(i);
     nodeMap[i] = ni;
-    
+
     SmartGraph::Node nj = g.nodeFromId(j);
     nodeMap[j] = nj;
-    
+
     SmartGraph::Edge edge = g.addEdge(ni, nj);
     edgeLength[edge] = length;
     nodeValence[ni] += 1;
     nodeValence[nj] += 1;
-    
+
     return edge;
 }
 
@@ -111,5 +111,10 @@ int CGraph::colorize()
             }
         }
     }
+    return 0;
+}
+
+int CGraph::saveGraph(const string & filename, const map<int, vector<int>> & cuts, const map<int, vector<int>> & pants)
+{
     return 0;
 }
