@@ -50,14 +50,13 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename)
         {
             std::istringstream iss(line);
             string type;
-            int cid, x, y;
+            int cid;
             double len;
             iss >> type;
             if (type.length() == 0 || type[0] == '#') continue;
             if (type == "Cut")
             {
-                iss >> cid >> x >> y >> len;
-                auto edge = graph->addEdge(x, y, len);
+                iss >> cid >> len;
                 vector<CVertex*> cut;
                 int vid = -1;
                 while (iss >> vid)
@@ -82,86 +81,6 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename)
     else
     {
         cout << "can't open graph file: " << graphfilename << endl;
-        exit(-1);
-    }
-
-    for (CVertex * v : mesh->vertices())
-    {
-        v->fixed() = false;
-        v->critical() = false;
-        v->critical2() = false;
-        v->cut() = false;
-        v->cut2() = false;
-        v->touched() = false;
-    }
-
-    for (auto c : cuts)
-    {
-        int id = c.first;
-        auto cut = c.second;
-        auto e = graph->g.edgeFromId(id);
-        auto u = graph->g.u(e);
-        auto v = graph->g.v(e);
-        bool isfixed = graph->nodeValence[u] == 1 || graph->nodeValence[v] == 1;
-        if (isfixed)
-        {
-            for (auto vi : cut)
-            {
-                vi->fixed() = true;
-            }
-        }
-    }
-    graph->calculateNodeDistance();
-
-    return 0;
-}
-
-int CGraphHarmonicMap::setCuts(const string & cutsfilename)
-{
-    if (!mesh)
-    {
-        cerr << "read mesh first" << endl;
-        exit(-1);
-    }
-    ifstream graphfile(cutsfilename);
-    if (graphfile.good())
-    {
-        string line;
-        int cid = 0, sid = 0, seed;
-        while (getline(graphfile, line))
-        {
-            std::istringstream iss(line);
-            string type;
-            iss >> type;
-            if (type.length() == 0 || type[0] == '#') continue;
-
-            if (type == "Cut")
-            {
-                vector<CVertex*> cut;
-                int vid = -1;
-                while (iss >> vid)
-                {
-                    cut.push_back(mesh->vertex(vid));
-                }
-                if (cut.empty())
-                {
-                    cerr << "cut can not be empty" << endl;
-                    exit(-1);
-                }
-                cuts[cid] = cut;
-                cid++;
-            }
-            if (type == "Pants")
-            {
-                iss >> seed;
-                seeds[sid] = mesh->vertex(seed);
-                sid++;
-            }
-        }
-    }
-    else
-    {
-        cout << "can't open cuts file: " << cutsfilename << endl;
         exit(-1);
     }
 
@@ -855,7 +774,6 @@ int CGraphHarmonicMap::harmonicMap()
             if (d > err) err = d;
         }
         if (k % 100 == 0) cout << "#" << k << ": " << err << endl;
-        //if (k % 500 == 0) writeMap("harmonic." + to_string(int(k / 500)));
         if (err < EPS) break;
         ++k;
     }
@@ -1058,7 +976,6 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
     {
         return embedPants(node, pants, edges);
     }
-
 
     return 0;
 }
@@ -1378,15 +1295,10 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
         }
     }
 
-    Cut cuts_n;
-    for (auto e : edges)
+    for(auto e : edges)
     {
-        cuts_n[graph->g.id(e)] = cuts[graph->g.id(e)];
-    }
-    for (auto c : cuts_n)
-    {
-        int id = c.first;
-        auto cut = c.second;
+        int id = graph->g.id(e);
+        auto cut = cuts[id];
         auto e = graph->g.edgeFromId(id);
         auto u = graph->g.u(e);
         auto v = graph->g.v(e);
@@ -1802,8 +1714,7 @@ int GraphHarmonicMap(string meshfilename, string graphfilename, string outfilena
     CGraphHarmonicMap * map = new CGraphHarmonicMap();
 
     map->setMesh(meshfilename);
-    //map->setGraph(graphfilename);
-    map->setCuts(graphfilename);
+    map->setGraph(graphfilename);
     if (options == "init")
     {
         map->initialMap("init");
@@ -1829,8 +1740,7 @@ int Decompose(string meshfilename, string graphfilename, string outfilename, str
     CGraphHarmonicMap * map = new CGraphHarmonicMap();
 
     map->setMesh(meshfilename);
-    //map->setGraph(graphfilename);
-    map->setCuts(graphfilename);
+    map->setGraph(graphfilename);
     map->initialMap("continue");
 
     map->decompose();

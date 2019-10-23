@@ -96,7 +96,6 @@ public:
 
     int setMesh(const string & filename);
     int setGraph(const string & graphfilename);
-    int setCuts(const string & cutsfilename);
 
     int calculateEdgeLength();
     int calculateEdgeWeight();
