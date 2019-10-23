@@ -832,6 +832,18 @@ int CGraphHarmonicMap::harmonicMap()
 
     time_t start = time(NULL);
     int k = 0;
+    while (k < 10)
+    {
+        double err = 0;
+#pragma omp parallel for
+        for (int i = 0; i < vv.size(); ++i)
+        {
+            if (vv[i]->cut() || vv[i]->cut2()) continue;
+            double d = calculateBarycenter(vv[i]);
+            if (d > err) err = d;
+        }
+        ++k;
+    }
     while (k < 2000)
     {
         double err = 0;
@@ -1015,6 +1027,11 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
     {
         SmartGraph::Edge e = oa;
         edges.push_back(e);
+    }
+
+    for (CVertex * v : mesh->vertices())
+    {
+        v->touched() = false;
     }
 
     if (edges.size() == 3)
