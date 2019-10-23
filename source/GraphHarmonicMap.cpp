@@ -1820,7 +1820,7 @@ int CGraphHarmonicMap::outputObj(string filename)
     os_mtl << "newmtl material0" << endl;
     os_mtl << "Ka 0 0 0" << endl;
     os_mtl << "Ks 0 0 0" << endl;
-    os_mtl << "map_Kd " << filename.substr(0, pos) + ".png" << endl;
+    os_mtl << "map_Kd checkboard.png" << endl;
 
     // output obj file
     std::fstream os(filename, std::fstream::out);
@@ -1883,8 +1883,17 @@ int GraphHarmonicMap(string meshfilename, string graphfilename, string outfilena
 
     map->harmonicMap();
 
-    map->output(outfilename);
-    map->outputObj(outfilename + ".obj");
+    auto pos = outfilename.find(".m");
+    if (pos == outfilename.length())
+    {
+        map->output(outfilename + ".m");
+        map->outputObj(outfilename + ".obj");
+    }
+    else
+    {
+        map->output(outfilename);
+        map->outputObj(outfilename.substr(0, pos) + ".obj");
+    }
 
     return 0;
 }
