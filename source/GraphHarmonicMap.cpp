@@ -803,7 +803,7 @@ int CGraphHarmonicMap::harmonicMap()
     }
     double post_energy = calculateHarmonicEnergy();
     cout << "#" << k << ": energy decreased = " << pre_energy - post_energy << endl;
-    while (k <= 2000)
+    while (k <= 20000)
     {
         double err = 0;
         //random_shuffle(vv.begin(), vv.end());
@@ -850,7 +850,10 @@ int CGraphHarmonicMap::harmonicMap()
             if (x > el / 2.0) x = (el - x);
         }
         ostringstream oss;
-        oss << "uv=(" << x << " 0.43) target=(" << eid << " " << nid << " " << length << ")";
+        double max_weight = -1;
+        for (auto w : wms)
+            max_weight = max(max_weight, w.second);
+        oss << "uv=(" << x / max_weight << " 0.43) target=(" << eid << " " << nid << " " << length << ")";
         v->string() = oss.str();
     }
 
@@ -1444,46 +1447,6 @@ int CGraphHarmonicMap::findNeighbors(vector<CVertex*> & cut, vector<CVertex*> & 
     }
     return 0;
 }
-
-//int CGraphHarmonicMap::findMeshBoundaries()
-//{
-//    size_t nv = mesh->num_vertices();
-//    size_t nf = mesh->num_faces();
-//
-//    for (auto v : mesh->vertices())
-//        v->boundary() = false;
-//
-//    Eigen::SparseMatrix<int> am;
-//    vector<Eigen::Triplet<int>> am_triplets;
-//    am_triplets.reserve(nf * 6);
-//    for (auto f : mesh->faces())
-//    {
-//        for (auto he : f->halfedges())
-//        {
-//            int vi = he->source()->id() - 1;
-//            int vj = he->target()->id() - 1;
-//            am_triplets.push_back({ vi, vj, 1 });
-//            am_triplets.push_back({ vj, vi, 1 });
-//        }
-//    }
-//
-//    am.resize(nv, nv);
-//    am.setFromTriplets(am_triplets.begin(), am_triplets.end());
-//
-//    for (auto k = 0; k < am.outerSize(); ++k)
-//    {
-//        for (Eigen::SparseMatrix<int>::InnerIterator it(am, k); it; ++it)
-//        {
-//            if (it.value() == 1)
-//            {
-//                mesh->vertex(it.row())->boundary() = true;
-//                mesh->vertex(it.col())->boundary() = true;
-//            }
-//        }
-//    }
-//
-//    return 0;
-//}
 
 void CGraphHarmonicMap::test()
 {
