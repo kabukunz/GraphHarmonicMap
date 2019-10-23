@@ -140,6 +140,7 @@ public:
     CVertex * locateCriticalPoint(CEdge * e);
 
     int output(string filename);
+    int outputObj(string filename);
     int outputGraph(const string & filename);
 
 private:
