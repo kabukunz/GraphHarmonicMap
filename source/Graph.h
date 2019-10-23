@@ -20,7 +20,12 @@ public:
     SmartGraph::Edge addEdge(int i, int j, double length);
 
     void calculateNodeDistance();
-    double distance(const SmartGraph::Node & n1, const SmartGraph::Node & n2);
+    double distance(const SmartGraph::Node & n1, const SmartGraph::Node & n2)
+    {
+        int i = g.id(n1);
+        int j = g.id(n2);
+        return nodeDist[i][j];
+    }
 
     int colorize();
     int saveGraph(const string & filename, const map<int, vector<int>> & cuts, const map<int, vector<int>> & pants);

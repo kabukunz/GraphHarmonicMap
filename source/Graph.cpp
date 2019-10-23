@@ -52,13 +52,6 @@ ostream& operator<<(ostream& os, CGraph& graph)
     return os;
 }
 
-double CGraph::distance(const SmartGraph::Node & n1, const SmartGraph::Node & n2)
-{
-    int i = g.id(n1);
-    int j = g.id(n2);
-    return nodeDist[i][j];
-}
-
 void CGraph::calculateNodeDistance()
 {
     SmartGraph::NodeMap<double> dist(g);
