@@ -130,10 +130,10 @@ int CGraphHarmonicMap::calculateEdgeWeight()
             double theta = inverse_cosine_law(e->length(), he_next->edge()->length(), he_prev->edge()->length());
             e->weight() += 0.5 / tan(theta);
         }
-        if (e->weight() < 0)
+        /*if (e->weight() < 0)
         {
             e->weight() = 0;
-        }
+        }*/
     }
     return 0;
 }
@@ -484,7 +484,9 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v)
 
     CTarget* * neit = v->neit();
     double * ew = v->ew();
-    double a = v->ewsum();
+    double lambda = 1.0;
+    double a = v->ewsum() + lambda;
+    double vl = v->target()->length;
     int nn = v->nn();
     SmartGraph::Node dummyNode;
     double * bx = v->bx();
@@ -554,6 +556,8 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v)
                     b += 2 * ew[j] * bx[j];
                     c += ew[j] * bx[j] * bx[j];
                 }
+                b -= 2 * lambda * vl;
+                c += lambda * vl * vl;
                 double x = 0;
                 double mi = quadraticMininum(a, b, c, x0, x1, x);
                 if (mi < ei)
@@ -588,6 +592,8 @@ double CGraphHarmonicMap::calculateBarycenter(CVertex * v)
                 b += 2 * ew[j] * bx[j];
                 c += ew[j] * bx[j] * bx[j];
             }
+            b -= 2 * lambda * vl;
+            c += lambda * vl * vl;
             CTarget * t = vx[eid];
             t->edge = e;
             t->node = ue;
@@ -751,6 +757,7 @@ int CGraphHarmonicMap::harmonicMap()
     }
 
     time_t start = time(NULL);
+    int mid = -1;
     int k = 0;
     while (k < 10)
     {
@@ -760,7 +767,11 @@ int CGraphHarmonicMap::harmonicMap()
         {
             if (vv[i]->cut() || vv[i]->cut2()) continue;
             double d = calculateBarycenter(vv[i]);
-            if (d > err) err = d;
+            if (d > err)
+            {
+                err = d;
+                mid = i;
+            }
         }
         ++k;
     }
@@ -772,9 +783,13 @@ int CGraphHarmonicMap::harmonicMap()
         for (int i = 0; i < vv.size(); ++i)
         {
             double d = calculateBarycenter(vv[i]);
-            if (d > err) err = d;
+            if (d > err)
+            {
+                err = d;
+                mid = i;
+            }
         }
-        if (k % 100 == 0) cout << "#" << k << ": " << err << endl;
+        if (k % 100 == 0) cout << "#" << k << ": " << err << " " << mid << endl;
         if (err < EPS) break;
         ++k;
     }
@@ -1710,6 +1725,18 @@ CVertex * CGraphHarmonicMap::locateCriticalPoint(CEdge * e)
 int CGraphHarmonicMap::output(string filename)
 {
     mesh->write_m(filename);
+    return 0;
+}
+
+int CGraphHarmonicMap::outputGraph(const string & filename)
+{
+    std::ofstream ofs(filename);
+    for (int i = 0; i < cuts.size(); ++i)
+    {
+        auto e = graph->g.edgeFromId(i);
+        ofs << graph->g.id(graph->g.u(e)) << " " << graph->g.id(graph->g.v(e)) << std::endl;
+    }
+    ofs.close();
     return 0;
 }
 
