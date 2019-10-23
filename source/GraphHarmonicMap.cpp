@@ -28,7 +28,6 @@ CGraphHarmonicMap::~CGraphHarmonicMap()
 int CGraphHarmonicMap::setMesh(const string & filename)
 {
     mesh->read_m(filename);
-    findMeshBoundaries();
     return 0;
 }
 
@@ -903,11 +902,50 @@ int CGraphHarmonicMap::traceAllPants()
     }
     if (graph->g.nodeNum() == 0)
     {
+        vector<int> boundary_cuts;
         for (auto cm : cms)
         {
             int cut_id = cm.first;
             set<int> cut_connected_pants = cm.second;
-            if (cut_connected_pants.size() == 2)
+
+            bool on_boundary = true;
+            for (auto vc : cuts[cut_id])
+                if (!vc->boundary())
+                    on_boundary = false;
+
+            if (cut_connected_pants.size() == 0)
+            {
+                cout << "Find a cut with size 0, cut id is " << to_string(cut_id) << endl;
+                exit(-1);
+            }
+
+            if (on_boundary || cut_connected_pants.size() == 1)
+            {
+                boundary_cuts.push_back(cut_id);
+            }
+        }
+        while (graph->g.nodeNum() < pantss.size() + boundary_cuts.size())
+        {
+            SmartGraph::Node node = graph->g.addNode();
+            graph->nodeValence[node] = 0;
+        }
+
+        for (auto cm : cms)
+        {
+            int cut_id = cm.first;
+            set<int> cut_connected_pants = cm.second;
+
+            auto it = find(boundary_cuts.begin(), boundary_cuts.end(), cut_id);
+
+            if (it != boundary_cuts.end())
+            {
+                auto iter = cut_connected_pants.begin();
+                advance(iter, 0);
+                int x = *iter;
+                int y = pantss.size() + it - boundary_cuts.begin();
+                graph->addEdge(x, y, wms[cut_id]);
+            }
+            else if (cut_connected_pants.size() == 2)
             {
                 auto iter = cut_connected_pants.begin();
                 advance(iter, 0);
@@ -929,6 +967,7 @@ int CGraphHarmonicMap::traceAllPants()
                     << cut_connected_pants.size() << endl;
             }
         }
+
         for (auto c : cuts)
         {
             int id = c.first;
@@ -1247,6 +1286,7 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
                 t->length = -y;
             }
         }
+        int vid = v->id();
         v->target() = t;
     }
     Cut cut3;
@@ -1405,47 +1445,45 @@ int CGraphHarmonicMap::findNeighbors(vector<CVertex*> & cut, vector<CVertex*> & 
     return 0;
 }
 
-int CGraphHarmonicMap::findMeshBoundaries()
-{
-    size_t nv = mesh->num_vertices();
-    size_t nf = mesh->num_faces();
-
-    for (auto v : mesh->vertices())
-        v->boundary() = false;
-
-    Eigen::SparseMatrix<int> am;
-    vector<Eigen::Triplet<int>> am_triplets;
-    am_triplets.reserve(nf * 6);
-    for (auto f : mesh->faces())
-    {
-        for (auto he : f->halfedges())
-        {
-            int vi = he->source()->id();
-            int vj = he->target()->id();
-            am_triplets.push_back({ vi, vj, 1 });
-            am_triplets.push_back({ vj, vi, 1 });
-        }
-    }
-
-    am.resize(nv, nv);
-    am.setFromTriplets(am_triplets.begin(), am_triplets.end());
-
-    for (auto k = 0; k < am.outerSize(); ++k)
-    {
-        for (Eigen::SparseMatrix<int>::InnerIterator it(am, k); it; ++it)
-        {
-            if (it.value() == 1)
-            {
-                mesh->vertex(it.row())->boundary() = true;
-                mesh->vertex(it.col())->boundary() = true;
-            }
-        }
-    }
-
-    return 0;
-}
-
-
+//int CGraphHarmonicMap::findMeshBoundaries()
+//{
+//    size_t nv = mesh->num_vertices();
+//    size_t nf = mesh->num_faces();
+//
+//    for (auto v : mesh->vertices())
+//        v->boundary() = false;
+//
+//    Eigen::SparseMatrix<int> am;
+//    vector<Eigen::Triplet<int>> am_triplets;
+//    am_triplets.reserve(nf * 6);
+//    for (auto f : mesh->faces())
+//    {
+//        for (auto he : f->halfedges())
+//        {
+//            int vi = he->source()->id() - 1;
+//            int vj = he->target()->id() - 1;
+//            am_triplets.push_back({ vi, vj, 1 });
+//            am_triplets.push_back({ vj, vi, 1 });
+//        }
+//    }
+//
+//    am.resize(nv, nv);
+//    am.setFromTriplets(am_triplets.begin(), am_triplets.end());
+//
+//    for (auto k = 0; k < am.outerSize(); ++k)
+//    {
+//        for (Eigen::SparseMatrix<int>::InnerIterator it(am, k); it; ++it)
+//        {
+//            if (it.value() == 1)
+//            {
+//                mesh->vertex(it.row())->boundary() = true;
+//                mesh->vertex(it.col())->boundary() = true;
+//            }
+//        }
+//    }
+//
+//    return 0;
+//}
 
 void CGraphHarmonicMap::test()
 {
