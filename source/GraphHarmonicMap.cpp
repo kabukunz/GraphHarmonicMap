@@ -1350,7 +1350,7 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
     {
         int id = graph->g.id(e);
         auto cut = cuts[id];
-        auto e = graph->g.edgeFromId(id);
+        // auto e = graph->g.edgeFromId(id);
         auto u = graph->g.u(e);
         auto v = graph->g.v(e);
         SmartGraph::Node n = u == node ? v : u;
