@@ -727,6 +727,7 @@ int CGraphHarmonicMap::initialMap(string method)
         {
             int id = p.first;
             auto pants = p.second;
+            if (pants.size() == 1) continue;
             auto node = graph->g.nodeFromId(id);
             embedPants(node, pants);
         }
@@ -887,6 +888,7 @@ int CGraphHarmonicMap::traceAllPants()
     for (CVertex * v : mesh->vertices())
     {
         v->pants() = -1;
+        v->target() = nullptr;
     }
     for (auto s : seeds)
     {
@@ -946,8 +948,10 @@ int CGraphHarmonicMap::traceAllPants()
                 auto iter = cut_connected_pants.begin();
                 advance(iter, 0);
                 int x = *iter;
-                int y = pantss.size() + it - boundary_cuts.begin();
+                int addi = it - boundary_cuts.begin();
+                int y = pantss.size() + addi;
                 graph->addEdge(x, y, wms[cut_id]);
+                //pantss[y] = cuts[cut_id];
             }
             else if (cut_connected_pants.size() == 2)
             {
@@ -1332,11 +1336,14 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
 { 
     for (auto v : pants)
     {
-        CTarget* t = new CTarget();
-        t->node = node;
-        t->length = 0.0;
-        t->edge = edges[0];
-        v->target() = t;
+        if (!v->target())
+        {
+            CTarget* t = new CTarget();
+            t->node = node;
+            t->length = 0.0;
+            t->edge = edges[0];
+            v->target() = t;
+        }
     }
 
     for (auto e : edges)
@@ -1364,30 +1371,42 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
         {
             if (!v->touched() && v->target())
             {
-                v->cut2() = true;
-                v->touched() = true;
                 v->target()->edge = e;
                 v->target()->length = on ? length : length * 0.6;
+                v->cut2() = true;
+                v->touched() = true;
             }
         }
         for (auto v : vs2)
         {
             if (!v->touched() && v->target())
             {
-                v->cut2() = true;
-                v->touched() = true;
                 v->target()->edge = e;
                 v->target()->length = on ? length : length * 0.4;
+                v->cut2() = true;
+                v->touched() = true;
             }
         }
         for (auto v : cut)
         {
-            v->x() = on ? length : length / 2.0;
-            v->y() = on ? length : length / 2.0;
-            v->cut2() = true;
-            v->touched() = true;
-            v->target()->edge = e;
-            v->target()->length = on ? length : length / 2.0;
+            if (!v->touched())
+            {
+                if (!v->target())
+                {
+                    CTarget* t = new CTarget();
+                    t->node = node;
+                    t->length = 0.0;
+                    t->edge = edges[0];
+                    int vid = v->id();
+                    v->target() = t;
+                }
+                v->x() = on ? length : length / 2.0;
+                v->y() = on ? length : length / 2.0;
+                v->target()->edge = e;
+                v->target()->length = on ? length : length / 2.0;
+                v->cut2() = true;
+                v->touched() = true;
+            }
         }
     }
 
