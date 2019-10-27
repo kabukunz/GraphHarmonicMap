@@ -50,13 +50,17 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename)
         {
             std::istringstream iss(line);
             string type;
-            int cid;
+            int cid, x, y;
             double len;
             iss >> type;
             if (type.length() == 0 || type[0] == '#') continue;
             if (type == "Cut")
             {
-                iss >> cid >> len;
+                iss >> cid >> x >> y >> len;
+                if (x >= 0 && y >= 0)
+                {
+                    auto edge = graph->addEdge(x, y, len);
+                }
                 vector<CVertex*> cut;
                 int vid = -1;
                 while (iss >> vid)
@@ -93,6 +97,33 @@ int CGraphHarmonicMap::setGraph(const string & graphfilename)
         v->cut() = false;
         v->cut2() = false;
         v->touched() = false;
+    }
+
+    if (graph->g.edgeNum() == cuts.size())
+    {
+        for (auto c : cuts)
+        {
+            int id = c.first;
+            auto cut = c.second;
+            auto e = graph->g.edgeFromId(id);
+            auto u = graph->g.u(e);
+            auto v = graph->g.v(e);
+            bool isfixed = graph->nodeValence[u] == 1 || graph->nodeValence[v] == 1;
+            if (isfixed)
+            {
+                for (auto vi : cut)
+                {
+                    vi->fixed() = true;
+                }
+            }
+        }
+        graph->calculateNodeDistance();
+        return 0;
+    }
+    else if (graph->g.edgeNum() != 0)
+    {
+        cerr << "# Cuts and # graph edges mismatch, either set the whole graph or set all x's and y's to be -1" << endl;
+        exit(-1);
     }
 
     return 0;
@@ -727,7 +758,6 @@ int CGraphHarmonicMap::initialMap(string method)
         {
             int id = p.first;
             auto pants = p.second;
-            if (pants.size() == 1) continue;
             auto node = graph->g.nodeFromId(id);
             embedPants(node, pants);
         }
@@ -951,7 +981,6 @@ int CGraphHarmonicMap::traceAllPants()
                 int addi = it - boundary_cuts.begin();
                 int y = pantss.size() + addi;
                 graph->addEdge(x, y, wms[cut_id]);
-                //pantss[y] = cuts[cut_id];
             }
             else if (cut_connected_pants.size() == 2)
             {
@@ -1372,7 +1401,7 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
             if (!v->touched() && v->target())
             {
                 v->target()->edge = e;
-                v->target()->length = on ? length : length * 0.6;
+                v->target()->length = on ? length : length * 0.5;
                 v->cut2() = true;
                 v->touched() = true;
             }
@@ -1382,7 +1411,7 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
             if (!v->touched() && v->target())
             {
                 v->target()->edge = e;
-                v->target()->length = on ? length : length * 0.4;
+                v->target()->length = on ? length : length * 0.5;
                 v->cut2() = true;
                 v->touched() = true;
             }
@@ -1872,10 +1901,30 @@ int CGraphHarmonicMap::outputObj(string filename)
 int CGraphHarmonicMap::outputGraph(const string & filename)
 {
     std::ofstream ofs(filename);
-    for (int i = 0; i < cuts.size(); ++i)
+    ofs << "# Totol # Pants: " << pantss.size() << ", total # cuts: " << cuts.size() << endl;
+    // output pants
+    for (auto p : pantss)
     {
-        auto e = graph->g.edgeFromId(i);
-        ofs << graph->g.id(graph->g.u(e)) << " " << graph->g.id(graph->g.v(e)) << std::endl;
+        int pants_id = p.first;
+        auto pants = p.second;
+        // ofs << "# Pants id: " << pants_id << ", size: " << pants.size() << endl;
+        ofs << "Pants " << pants_id << " " << seeds[pants_id]->id() << endl;
+    }
+
+    // output cuts
+    for (auto c : cuts)
+    {
+        int cut_id = c.first;
+        auto cut = c.second;
+        auto e = graph->g.edgeFromId(cut_id);
+        // ofs << "# Cut id: " << cut_id << ", size: " << cut.size() << endl;
+        ofs << "Cut " << cut_id << " " << graph->g.id(graph->g.u(e)) << " "
+            << graph->g.id(graph->g.v(e)) << " " << wms[cut_id];
+        for (auto v : cut)
+        {
+            ofs << " " << v->id();
+        }
+        ofs << endl;
     }
     ofs.close();
     return 0;
@@ -1907,11 +1956,13 @@ int GraphHarmonicMap(string meshfilename, string graphfilename, string outfilena
     {
         map->output(outfilename + ".m");
         map->outputObj(outfilename + ".obj");
+        map->outputGraph(outfilename + ".graph");
     }
     else
     {
         map->output(outfilename);
         map->outputObj(outfilename.substr(0, pos) + ".obj");
+        map->outputGraph(outfilename.substr(0, pos) + ".graph");
     }
 
     return 0;
