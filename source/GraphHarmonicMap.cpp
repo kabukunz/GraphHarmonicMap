@@ -690,6 +690,12 @@ int CGraphHarmonicMap::initialMap(string method)
 
     if (method == "continue")
     {
+        if (graph->g.edgeNum() == 0)
+        {
+            cerr << "You have to set graph struct in .graph file for decompose mode." << endl;
+            exit(-1);
+        }
+
         vector<SmartGraph::Edge> edges;
         for (SmartGraph::EdgeIt e(graph->g); e != INVALID; ++e)
         {
@@ -1045,7 +1051,6 @@ int CGraphHarmonicMap::tracePants(int id, CVertex * seed, vector<CVertex*> & pan
         if (isCut)
         {
             cms[v->cut_id()].insert(id);
-            continue;
         }
         for (CVertex * vj : v->vertices())
         {
@@ -1363,16 +1368,18 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
 
 int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pants, vector<SmartGraph::Edge>& edges)
 { 
+    auto new_target = [=](auto * v)
+    {
+        CTarget* t = new CTarget();
+        t->node = node;
+        t->length = 0.0;
+        t->edge = edges[0];
+        v->target() = t;
+    };
+
     for (auto v : pants)
     {
-        if (!v->target())
-        {
-            CTarget* t = new CTarget();
-            t->node = node;
-            t->length = 0.0;
-            t->edge = edges[0];
-            v->target() = t;
-        }
+        if (!v->target()) new_target(v);
     }
 
     for (auto e : edges)
@@ -1398,44 +1405,27 @@ int CGraphHarmonicMap::embedPants(SmartGraph::Node & node, vector<CVertex*> & pa
         // find two side neighbors of cut
         for (auto v : vs1)
         {
-            if (!v->touched() && v->target())
-            {
-                v->target()->edge = e;
-                v->target()->length = on ? length : length * 0.5;
-                v->cut2() = true;
-                v->touched() = true;
-            }
+            if (!v->target()) new_target(v);
+            v->target()->edge = e;
+            v->target()->length = on ? length : length * 0.5;
+            v->cut2() = true;
+            v->touched() = true;
         }
         for (auto v : vs2)
         {
-            if (!v->touched() && v->target())
-            {
-                v->target()->edge = e;
-                v->target()->length = on ? length : length * 0.5;
-                v->cut2() = true;
-                v->touched() = true;
-            }
+            if (!v->target()) new_target(v);
+            v->target()->edge = e;
+            v->target()->length = on ? length : length * 0.5;
+            v->cut2() = true;
+            v->touched() = true;
         }
         for (auto v : cut)
         {
-            if (!v->touched())
-            {
-                if (!v->target())
-                {
-                    CTarget* t = new CTarget();
-                    t->node = node;
-                    t->length = 0.0;
-                    t->edge = edges[0];
-                    int vid = v->id();
-                    v->target() = t;
-                }
-                v->x() = on ? length : length / 2.0;
-                v->y() = on ? length : length / 2.0;
-                v->target()->edge = e;
-                v->target()->length = on ? length : length / 2.0;
-                v->cut2() = true;
-                v->touched() = true;
-            }
+            if (!v->target()) new_target(v);
+            v->target()->edge = e;
+            v->target()->length = on ? length : length / 2.0;
+            v->cut2() = true;
+            v->touched() = true;
         }
     }
 
@@ -1975,7 +1965,7 @@ int Decompose(string meshfilename, string graphfilename, string outfilename, str
     map->setMesh(meshfilename);
     map->setGraph(graphfilename);
     map->initialMap("continue");
-
+ 
     map->decompose();
 
     map->output(outfilename);
