@@ -809,15 +809,11 @@ int CGraphHarmonicMap::harmonicMap()
         v->neit() = new CTarget*[nn];
         v->ew() = new double[nn];
         v->ewsum() = 0;
-        v->lambda() = 0.0;
+        v->lambda() = 1;
         for (int i = 0; i < nn; ++i)
         {
             v->neit()[i] = vr[i]->target();
             v->ew()[i] = mesh->edge(v, vr[i])->weight();
-            if (v->ew()[i] < 0)
-            {
-                v->lambda() = 0;
-            }
             v->ewsum() += v->ew()[i];
         }
     }
@@ -840,7 +836,7 @@ int CGraphHarmonicMap::harmonicMap()
     }
     double post_energy = calculateHarmonicEnergy();
     cout << "#" << k << ": energy decreased = " << pre_energy - post_energy << endl;
-    while (k <= 20000)
+    while (k <= 10000)
     {
         double err = 0;
         //random_shuffle(vv.begin(), vv.end());
