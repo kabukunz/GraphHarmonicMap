@@ -1,6 +1,6 @@
 [submodule "MeshLib"]
 	path = third-party/MeshLib
-	url = https://github.com/cfwen/MeshLib.git
+	url = https://github.com/kabukunz/meshlib.git
 [submodule "eigen"]
 	path = third-party/eigen
 	url = https://github.com/group-gu/eigen.git

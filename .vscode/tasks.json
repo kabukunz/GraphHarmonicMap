@@ -1,27 +1,25 @@
 {
     // See https://go.microsoft.com/fwlink/?LinkId=733558
     // for the documentation about the tasks.json format
-    "version": "0.1.0",
-    "showOutput": "always",
+    "version": "2.0.0",
     "isShellCommand": true,
     "tasks": [
         {
-            "taskName": "make",
+            "label": "make",
+            "type": "shell",
             "command": "make",
-            "args": [],
-            "isBuildCommand": true,
-            "options": {
-                "cwd": "${workspaceRoot}/build"
-            }
+            "problemMatcher": [],
+            "group": "build"
         },
         {
-            "taskName": "install",
+            "label": "install",
+            "type": "shell",
             "command": "make",
-            "args": ["install"],
-            "isBuildCommand": true,
-            "options": {
-                "cwd": "${workspaceRoot}/build"
-            }
+            "args": [
+                "install"
+            ],
+            "problemMatcher": [],
+            "group": "build"
         }
     ]
 }

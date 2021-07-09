@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.0)
 #     set(CMAKE_CXX_COMPILER "g++-6")
 # endif()
 
-project(GraphHarmonicMap)
+project(GraphHarmonicMap C CXX)
 set (GraphHarmonicMap_VERSION_MAJOR 1)
 set (GraphHarmonicMap_VERSION_MINOR 0)
 
@@ -54,10 +54,10 @@ if(${CMAKE_COMPILER_IS_GNUCXX})
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 endif()
 
-include_directories(third-party/MeshLib/base)
-include_directories(third-party/MeshLib/core)
+# include_directories(third-party/MeshLib/include)
+include_directories(third-party/meshlib/core)
 include_directories(third-party/eigen)
-#include_directories(third-party/lemon/include)
+include_directories(third-party/lemon/include)
 
 set(LEMON_ROOT "${PROJECT_ROOT}/third-party/lemon/")
 set(LEMON_BUILD_DIR "${PROJECT_ROOT}/build/lemon/")
@@ -76,7 +76,7 @@ ExternalProject_Add(lemon
         -DCMAKE_CXX_FLAGS_MINSIZEREL=${CMAKE_CXX_FLAGS_MINSIZEREL}
         -DCMAKE_CXX_FLAGS_RELWITHDEBINFO=${CMAKE_CXX_FLAGS_RELWITHDEBINFO}
 )
-include_directories(third-party/lemon/include)
+
 add_library(liblemon STATIC IMPORTED)
 add_dependencies(liblemon lemon)
 
